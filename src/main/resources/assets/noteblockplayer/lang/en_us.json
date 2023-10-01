@@ -1,0 +1,9 @@
+{
+  "noteblockplayer.config.title": "NoteblockPlayer Configuration",
+  "noteblockplayer.config.enum.StageType.DEFAULT": "Default",
+  "noteblockplayer.config.enum.StageType.WIDE": "Wide",
+  "noteblockplayer.config.enum.StageType.SPHERICAL": "Spherical",
+  "noteblockplayer.now_playing": "Now playing",
+  "noteblockplayer.building_noteblocks": "Building noteblocks",
+  "noteblockplayer.finished_playing": "Finished playing"
+}
