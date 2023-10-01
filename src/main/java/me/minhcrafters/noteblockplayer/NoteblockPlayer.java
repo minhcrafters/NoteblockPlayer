@@ -49,7 +49,7 @@ public class NoteblockPlayer implements ModInitializer {
             .get()
             .getMetadata()
             .getDescription();
-    public static String FORCE_PREFIX = String.format("<<%s>>", UUID.randomUUID());
+    public static String FORCE_COMMAND_PREFIX = String.format("<<%s>>", UUID.randomUUID());
     public static boolean showFakePlayer = false;
     public static FakePlayerEntity fakePlayer;
     private static ConfigImpl config;

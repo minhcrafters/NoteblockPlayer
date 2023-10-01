@@ -5,6 +5,7 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import me.minhcrafters.noteblockplayer.command.CommandManager;
 import net.minecraft.client.gui.screen.ChatInputSuggestor;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;

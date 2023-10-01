@@ -2,7 +2,7 @@ package me.minhcrafters.noteblockplayer.mixin;
 
 import me.minhcrafters.noteblockplayer.NoteblockPlayer;
 import me.minhcrafters.noteblockplayer.song.SongManager;
-import me.minhcrafters.noteblockplayer.song.item.SongItemConfirmScreen;
+import me.minhcrafters.noteblockplayer.song.item.SongItemConfirmationScreen;
 import me.minhcrafters.noteblockplayer.utils.ProgressDisplay;
 import me.minhcrafters.noteblockplayer.utils.SongItemUtils;
 import net.minecraft.block.entity.BlockEntity;
@@ -67,9 +67,9 @@ public class MinecraftClientMixin {
         ItemStack stack = NoteblockPlayer.mc.player.getStackInHand(Hand.MAIN_HAND);
         if (SongItemUtils.isSongItem(stack)) {
             try {
-                NoteblockPlayer.mc.setScreen(new SongItemConfirmScreen(stack));
+                NoteblockPlayer.mc.setScreen(new SongItemConfirmationScreen(stack));
             } catch (Exception e) {
-                NoteblockPlayer.addChatMessage("§cFailed to load song item: §4" + e.getMessage());
+                NoteblockPlayer.addChatMessage("§cFailed to load music sheet: §4" + e.getMessage());
             }
             itemUseCooldown = 4;
             ci.cancel();

@@ -14,19 +14,19 @@ import net.minecraft.util.Formatting;
 import java.util.Base64;
 
 public class SongItemUtils {
-    public static final String SONG_ITEM_KEY = "SongItemData";
-    public static final String SONG_DATA_KEY = "SongData";
+    public static final String SONG_ITEM_KEY = "MusicSheetData";
+    public static final String SONG_DATA_KEY = "MusicData";
     public static final String FILE_NAME_KEY = "FileName";
     public static final String DISPLAY_NAME_KEY = "DisplayName";
 
     /**
-     * Creates a song item with the specified song data, filename, and display name.
+     * Creates a music sheet with the specified song data, filename, and display name.
      *
-     * @param stack       the ItemStack to create the song item on
+     * @param stack       the ItemStack to create the music sheet on
      * @param songData    the byte array containing the song data
      * @param filename    the name of the song file
-     * @param displayName the display name of the song item
-     * @return the modified ItemStack with the song item
+     * @param displayName the display name of the music sheet
+     * @return the modified ItemStack with the music sheet
      */
     public static ItemStack createSongItem(ItemStack stack, byte[] songData, String filename, String displayName) {
         NbtCompound noteblockPlayerNbt = new NbtCompound();
@@ -39,10 +39,10 @@ public class SongItemUtils {
     }
 
     /**
-     * Retrieves the NbtCompound tag associated with a song item from the given ItemStack.
+     * Retrieves the NbtCompound tag associated with a music sheet from the given ItemStack.
      *
      * @param stack the ItemStack to retrieve the tag from
-     * @return the NbtCompound tag associated with the song item, or null if not found
+     * @return the NbtCompound tag associated with the music sheet, or null if not found
      */
     public static NbtCompound getSongItemTag(ItemStack stack) {
         return stack.getSubNbt(SONG_ITEM_KEY);
@@ -67,12 +67,11 @@ public class SongItemUtils {
         String name = noteblockPlayerNbt.getString(DISPLAY_NAME_KEY);
         if (name == null || name.isEmpty()) name = noteblockPlayerNbt.getString(FILE_NAME_KEY);
         if (name == null || name.isEmpty()) name = "unnamed";
-        Text nameText = getStyledText(name, Style.EMPTY.withColor(Formatting.DARK_AQUA).withItalic(false));
-        setItemName(stack, nameText);
+        Text nameText = getStyledText(name, Style.EMPTY.withColor(Formatting.GRAY).withItalic(false));
+        setItemName(stack, getStyledText("Music Sheet", Style.EMPTY.withColor(Formatting.DARK_AQUA).withItalic(false)));
         setItemLore(stack,
-                getStyledText("A custom music disc", Style.EMPTY.withColor(Formatting.YELLOW).withItalic(false)),
-                getStyledText("Right click to play", Style.EMPTY.withColor(Formatting.AQUA).withItalic(false)),
-                getStyledText("Requires NoteblockPlayer 1.6+", Style.EMPTY.withColor(Formatting.GOLD).withItalic(false))
+                nameText,
+                getStyledText("Requires NoteblockPlayer 1.6+", Style.EMPTY.withColor(Formatting.GOLD).withItalic(true))
         );
     }
 

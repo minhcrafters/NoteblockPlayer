@@ -35,7 +35,7 @@ public class Help extends Command {
     public boolean processCommand(String args) {
         String firstLine = "§3" + NoteblockPlayer.getModName() + " v" + NoteblockPlayer.getModVersion() + " §6by §3" + String.join(", ", NoteblockPlayer.getModAuthors()) + "\n§6Available commands:";
 
-        if (args.length() == 0) {
+        if (args.isEmpty()) {
             ArrayList<Text> commandsList = new ArrayList<>();
             ArrayList<String> syntaxList = new ArrayList<>();
 

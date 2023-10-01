@@ -28,11 +28,13 @@ public class Pause extends Command {
             NoteblockPlayer.addChatMessage(Text.of("§6No song is currently playing"));
             return true;
         }
-        if (args.length() == 0) {
+
+        if (args.isEmpty()) {
             SongManager.getInstance().currentSong.pause();
             NoteblockPlayer.addChatMessage(Text.of("§6Paused the current song."));
             return true;
         }
+
         return false;
     }
 }

@@ -2,6 +2,6 @@
   "parent": "minecraft:item/generated",
   "textures": {
     "layer0": "minecraft:item/paper",
-    "layer1": "songplayer:item/song_item"
+    "layer1": "noteblockplayer:item/song_item"
   }
 }

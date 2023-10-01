@@ -8,7 +8,7 @@
       "predicate": {
         "custom_model_data": 751642938
       },
-      "model": "songplayer:item/song_item"
+      "model": "noteblockplayer:item/song_item"
     }
   ]
 }

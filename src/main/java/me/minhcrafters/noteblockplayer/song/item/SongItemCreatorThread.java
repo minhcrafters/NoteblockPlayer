@@ -28,7 +28,7 @@ public class SongItemCreatorThread extends SongLoaderThread {
         try {
             songData = MusicDiscConverter.getBytesFromSong(song);
         } catch (IOException e) {
-            NoteblockPlayer.addChatMessage("§cError creating song item: §4" + e.getMessage());
+            NoteblockPlayer.addChatMessage("§cError creating music sheet: §4" + e.getMessage());
             return;
         }
         NoteblockPlayer.mc.execute(() -> {
@@ -36,7 +36,7 @@ public class SongItemCreatorThread extends SongLoaderThread {
                 return;
             }
             if (!NoteblockPlayer.mc.player.getInventory().getStack(slotId).equals(stack)) {
-                NoteblockPlayer.addChatMessage("§cCould not create song item because item has moved");
+                NoteblockPlayer.addChatMessage("§cCould not create music sheet because item has moved");
             }
             ItemStack newStack;
             if (stack.isEmpty()) {
@@ -48,7 +48,7 @@ public class SongItemCreatorThread extends SongLoaderThread {
             newStack = SongItemUtils.createSongItem(newStack, songData, filename, song.name);
             NoteblockPlayer.mc.player.getInventory().setStack(slotId, newStack);
             NoteblockPlayer.mc.interactionManager.clickCreativeStack(NoteblockPlayer.mc.player.getStackInHand(Hand.MAIN_HAND), 36 + slotId);
-            NoteblockPlayer.addChatMessage(Text.literal("§6Successfully assigned song data to: §3").append(newStack.getItem().getName()));
+            NoteblockPlayer.addChatMessage(Text.literal("§6Successfully created a new music sheet."));
         });
     }
 }

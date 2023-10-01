@@ -39,26 +39,6 @@ public class Play extends Command {
     }
 
     public CompletableFuture<Suggestions> getSuggestions(String args, SuggestionsBuilder suggestionsBuilder) {
-        int lastSlash = args.lastIndexOf("/");
-        String dirString = "";
-        Path dir = NoteblockPlayer.SONGS_DIR;
-        if (lastSlash >= 0) {
-            dirString = args.substring(0, lastSlash + 1);
-            dir = dir.resolve(dirString);
-        }
-
-        if (!Files.exists(dir)) return null;
-
-        ArrayList<String> suggestions = new ArrayList<>();
-        for (File file : Objects.requireNonNull(FileUtils.listFilesSilently(dir))
-                .map(Path::toFile)
-                .toList()) {
-            if (file.isFile()) {
-                suggestions.add(dirString + file.getName());
-            } else if (file.isDirectory()) {
-                suggestions.add(dirString + file.getName() + "/");
-            }
-        }
-        return CommandSource.suggestMatching(suggestions, suggestionsBuilder);
+        return FileUtils.giveSongSuggestions(args, suggestionsBuilder);
     }
 }

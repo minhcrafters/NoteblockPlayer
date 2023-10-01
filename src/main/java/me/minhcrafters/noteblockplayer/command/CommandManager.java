@@ -12,7 +12,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import static me.minhcrafters.noteblockplayer.NoteblockPlayer.FORCE_PREFIX;
+import static me.minhcrafters.noteblockplayer.NoteblockPlayer.FORCE_COMMAND_PREFIX;
 
 public class CommandManager {
     public static ArrayList<Command> commands = new ArrayList<>();
@@ -30,7 +30,7 @@ public class CommandManager {
         commands.add(new Status());
         commands.add(new Queue());
         commands.add(new Songs());
-        commands.add(new SongItem());
+        commands.add(new MusicSheet());
         commands.add(new StageType());
         commands.add(new SetPrefix());
         commands.add(new ToggleFakePlayer());
@@ -50,7 +50,7 @@ public class CommandManager {
 
     // returns true if it is a command and should be cancelled
     public static boolean processChatMessage(String message) {
-        if (message.startsWith(NoteblockPlayer.getConfig().commandPrefix) || message.startsWith(FORCE_PREFIX)) {
+        if (message.startsWith(NoteblockPlayer.getConfig().commandPrefix) || message.startsWith(FORCE_COMMAND_PREFIX)) {
             String[] parts = message.substring(1).split(" ", 2);
             String name = parts.length > 0 ? parts[0] : "";
             String args = parts.length > 1 ? parts[1] : "";

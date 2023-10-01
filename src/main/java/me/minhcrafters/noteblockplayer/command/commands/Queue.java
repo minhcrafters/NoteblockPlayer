@@ -25,7 +25,7 @@ public class Queue extends Command {
     }
 
     public boolean processCommand(String args) {
-        if (args.length() == 0) {
+        if (args.isEmpty()) {
             if (SongManager.getInstance().currentSong == null && SongManager.getInstance().songQueue.isEmpty()) {
                 NoteblockPlayer.addChatMessage(Text.of("§6No song is currently playing"));
                 return true;

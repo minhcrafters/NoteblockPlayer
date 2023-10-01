@@ -42,7 +42,7 @@ public class MusicDiscConverter {
         int loopCount = buffer.get() & 0xFF;
         long loopPosition = buffer.getLong();
 
-        Song song = new Song(!songName.trim().isEmpty() ? songName : fileName, "None", "None", "(Played from a song item)");
+        Song song = new Song(!songName.trim().isEmpty() ? songName : fileName, "None", "None", "(Played from a music sheet)");
         song.length = songLength;
         song.looping = loop > 0;
         song.loopCount = loopCount;

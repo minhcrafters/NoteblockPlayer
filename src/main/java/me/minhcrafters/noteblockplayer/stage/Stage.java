@@ -36,11 +36,19 @@ public class Stage {
     }
 
     public void sendMovementPacketToStagePosition() {
+        float yaw;
+        float pitch;
+
         if (NoteblockPlayer.fakePlayer != null) {
-            NoteblockPlayer.mc.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.Full(position.getX() + 0.5, position.getY(), position.getZ() + 0.5, NoteblockPlayer.fakePlayer.getYaw(), NoteblockPlayer.fakePlayer.getPitch(), true));
+            yaw = NoteblockPlayer.fakePlayer.getYaw();
+            pitch = NoteblockPlayer.fakePlayer.getPitch();
         } else {
-            NoteblockPlayer.mc.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.Full(position.getX() + 0.5, position.getY(), position.getZ() + 0.5, NoteblockPlayer.mc.player.getYaw(), NoteblockPlayer.mc.player.getPitch(), true));
+            yaw = NoteblockPlayer.mc.player.getYaw();
+            pitch = NoteblockPlayer.mc.player.getPitch();
         }
+
+        PlayerMoveC2SPacket packet = new PlayerMoveC2SPacket.Full(position.getX() + 0.5, position.getY(), position.getZ() + 0.5, yaw, pitch, true);
+        NoteblockPlayer.mc.getNetworkHandler().sendPacket(packet);
     }
 
     public void checkBuildStatus(Song song) {
@@ -158,7 +166,7 @@ public class Stage {
             return Double.compare(a_angle, b_angle);
         }).collect(Collectors.toCollection(LinkedList::new));
 
-        if (requiredBreaks.stream().allMatch(bp -> !withinBreakingDist(bp.getX() - position.getX(), bp.getY() - position.getY(), bp.getZ() - position.getZ()))) {
+        if (requiredBreaks.stream().noneMatch(bp -> withinBreakingDist(bp.getX() - position.getX(), bp.getY() - position.getY(), bp.getZ() - position.getZ()))) {
             requiredBreaks.clear();
         }
 
@@ -393,9 +401,15 @@ public class Stage {
     }
 
     boolean withinBreakingDist(int dx, int dy, int dz) {
-        double dy1 = dy + 0.5 - 1.62; // Standing eye height
-        double dy2 = dy + 0.5 - 1.27; // Crouching eye height
-        return dx * dx + dy1 * dy1 + dz * dz < 5.99999 * 5.99999 && dx * dx + dy2 * dy2 + dz * dz < 5.99999 * 5.99999;
+//        double dy1 = dy + 0.5 - 1.62; // Standing eye height
+//        double dy2 = dy + 0.5 - 1.27; // Crouching eye height
+//        return dx * dx + dy1 * dy1 + dz * dz < 5.99999 * 5.99999 && dx * dx + dy2 * dy2 + dz * dz < 5.99999 * 5.99999;
+        double distanceSquared = dx * dx + dy * dy + dz * dz;
+        double breakingDistSquared = 5.99999 * 5.99999;
+        double standingEyeHeight = dy + 0.5 - 1.62;
+        double crouchingEyeHeight = dy + 0.5 - 1.27;
+
+        return distanceSquared < breakingDistSquared && (dx * dx + standingEyeHeight * standingEyeHeight + dz * dz) < breakingDistSquared && (dx * dx + crouchingEyeHeight * crouchingEyeHeight + dz * dz) < breakingDistSquared;
     }
 
     public boolean nothingToBuild() {

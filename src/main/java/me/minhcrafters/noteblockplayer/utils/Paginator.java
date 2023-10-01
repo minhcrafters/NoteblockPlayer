@@ -1,14 +1,16 @@
 package me.minhcrafters.noteblockplayer.utils;
 
 import me.minhcrafters.noteblockplayer.NoteblockPlayer;
-import net.minecraft.text.*;
+import net.minecraft.text.ClickEvent;
+import net.minecraft.text.HoverEvent;
+import net.minecraft.text.MutableText;
+import net.minecraft.text.Text;
 
 import java.util.ArrayList;
 
-import static me.minhcrafters.noteblockplayer.NoteblockPlayer.FORCE_PREFIX;
+import static me.minhcrafters.noteblockplayer.NoteblockPlayer.FORCE_COMMAND_PREFIX;
 
 public class Paginator {
-
     public ArrayList<Text> entries;
     public String pageTitle;
     public int pageNumber;
@@ -42,7 +44,7 @@ public class Paginator {
 
     public void display() {
         if ((entries.size() % contentLinesPerPage) == 0) {
-            if (entries.size() > 0) {
+            if (!entries.isEmpty()) {
                 totalPagesCount = entries.size() / contentLinesPerPage;
             }
         } else {
@@ -55,21 +57,9 @@ public class Paginator {
             } else {
                 NoteblockPlayer.addChatMessage(Text.literal("§6-----------------------------------").append("§r\n").append(pageTitle));
 
-                MutableText counter = Text.literal("§6------------ ")
-                        .append(Text.literal("§3<<")
-                                .setStyle(Style.EMPTY
-                                        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.of("§6Previous page")))
-                                        .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, FORCE_PREFIX + commandToRun + " " + (pageNumber - 1)))
-                                )
-                        )
-                        .append("§3 [" + pageNumber + "/" + totalPagesCount + "] ")
-                        .append(Text.literal("§3>>")
-                                .setStyle(Style.EMPTY
-                                        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.of("§6Next page")))
-                                        .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, FORCE_PREFIX + commandToRun + " " + (pageNumber + 1)))
-                                )
-                        )
-                        .append(" §6------------");
+                MutableText counter = Text.literal("§6------------- ")
+                        .append("§3 [ " + pageNumber + "/" + totalPagesCount + " ] ")
+                        .append(" §6-------------");
 
                 NoteblockPlayer.addChatMessage(counter);
 

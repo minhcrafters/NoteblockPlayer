@@ -24,7 +24,7 @@ public class Skip extends Command {
             NoteblockPlayer.addChatMessage(Text.of("§6No song is currently playing"));
             return true;
         }
-        if (args.length() == 0) {
+        if (args.isEmpty()) {
             SongManager.getInstance().currentSong = null;
             return true;
         } else {

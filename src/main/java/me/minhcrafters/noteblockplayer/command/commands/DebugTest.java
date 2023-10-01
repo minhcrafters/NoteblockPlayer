@@ -20,7 +20,7 @@ public class DebugTest extends Command {
     }
 
     public boolean processCommand(String args) {
-        if (args.length() == 0) {
+        if (args.isEmpty()) {
             Song song = new Song("debug_test_song", "minhcrafters", "minhcrafters", "a song for debugging purposes");
             for (int i = 0; i < 400; i++) {
                 song.add(new Note(i, i * 50));
