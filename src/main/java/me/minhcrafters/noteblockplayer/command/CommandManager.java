@@ -54,11 +54,10 @@ public class CommandManager {
         registerCommand(new ToggleFlightNoClip());
         registerCommand(new SongItem());
         registerCommand(new TestSong());
-        
-        // Register commands with Brigadier
+
         CommandRegistrationCallback.EVENT.register(CommandManager::registerBrigadierCommands);
     }
-    
+
     private static void registerCommand(Command command) {
         commands.add(command);
         commandMap.put(command.getName().toLowerCase(Locale.ROOT), command);
@@ -68,50 +67,47 @@ public class CommandManager {
             commandCompletions.add(alias);
         }
     }
-    
-    private static void registerBrigadierCommands(CommandDispatcher<ServerCommandSource> dispatcher, 
-                                                 CommandRegistryAccess registryAccess, 
-                                                 net.minecraft.server.command.CommandManager.RegistrationEnvironment environment) {
-        // Create the main command node
+
+    private static void registerBrigadierCommands(CommandDispatcher<ServerCommandSource> dispatcher,
+                                                  CommandRegistryAccess registryAccess,
+                                                  net.minecraft.server.command.CommandManager.RegistrationEnvironment environment) {
         LiteralArgumentBuilder<ServerCommandSource> rootCommand = net.minecraft.server.command.CommandManager.literal(COMMAND_ROOT);
-        
-        // Register each subcommand
+
         for (Command command : commands) {
-            LiteralArgumentBuilder<ServerCommandSource> subCommand = net.minecraft.server.command.CommandManager.literal(command.getName());
-            
-            // If the command has no syntax, it can be executed without arguments
-            if (command.getSyntax().length == 0) {
-                subCommand.executes(context -> executeCommand(context, command, ""));
-            }
-            
-            // Add arguments handler
+            LiteralArgumentBuilder<ServerCommandSource> subCommand = net.minecraft.server.command.CommandManager.literal(command.getName())
+                    .requires(source -> source.hasPermissionLevel(command.getRequiredPermissionLevel()));
+
+            subCommand.executes(context -> executeCommand(context, command, ""));
+
             subCommand.then(net.minecraft.server.command.CommandManager.argument("args", StringArgumentType.greedyString())
-                    .suggests((context, builder) -> suggestArguments(command, "", builder))
-                    .executes(context -> executeCommand(context, command, StringArgumentType.getString(context, "args"))));
-            
-            // Add the subcommand to the root command
+                    .suggests((context, builder) ->
+                            suggestArguments(command, "", builder))
+                    .executes(context ->
+                            executeCommand(context, command, StringArgumentType.getString(context, "args"))));
+
             rootCommand.then(subCommand);
-            
-            // Register aliases as separate commands
+
             for (String alias : command.getAliases()) {
-                LiteralArgumentBuilder<ServerCommandSource> aliasCommand = net.minecraft.server.command.CommandManager.literal(alias);
-                
-                if (command.getSyntax().length == 0) {
-                    aliasCommand.executes(context -> executeCommand(context, command, ""));
-                }
-                
+                LiteralArgumentBuilder<ServerCommandSource> aliasCommand = net.minecraft.server.command.CommandManager.literal(alias)
+                        .requires(source -> source.hasPermissionLevel(command.getRequiredPermissionLevel()));
+
+                aliasCommand.executes(context ->
+                        executeCommand(context, command, ""));
+
                 aliasCommand.then(net.minecraft.server.command.CommandManager.argument("args", StringArgumentType.greedyString())
-                        .suggests((context, builder) -> suggestArguments(command, "", builder))
-                        .executes(context -> executeCommand(context, command, StringArgumentType.getString(context, "args"))));
-                
+                        .suggests((context, builder) ->
+                                suggestArguments(command, "", builder))
+                        .executes(context ->
+                                executeCommand(context, command, StringArgumentType.getString(context, "args"))));
+
                 rootCommand.then(aliasCommand);
             }
         }
-        
+
         // Register the complete command
         dispatcher.register(rootCommand);
     }
-    
+
     private static int executeCommand(CommandContext<ServerCommandSource> context, Command command, String args) {
         try {
             boolean success = command.processCommand(args);
@@ -135,11 +131,12 @@ public class CommandManager {
             return 0;
         }
     }
-    
+
+
     private static CompletableFuture<Suggestions> suggestArguments(Command command, String args, SuggestionsBuilder builder) {
         return command.getSuggestions(args, builder);
     }
-    
+
 //    /**
 //     * @deprecated This method is preserved for backward compatibility. Use brigadier commands instead.
 //     */

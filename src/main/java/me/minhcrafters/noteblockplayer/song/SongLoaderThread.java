@@ -28,6 +28,7 @@ public class SongLoaderThread extends Thread {
     }
 
     public SongLoaderThread(String location) throws IOException {
+        NoteblockPlayer.addChatMessage("Loading song from " + location);
         this.location = location;
         if (location.startsWith("http://") || location.startsWith("https://")) {
             isUrl = true;

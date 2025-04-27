@@ -45,6 +45,8 @@ public class NoteblockPlayer implements ModInitializer {
         Config.init(MOD_ID, ConfigImpl.class);
 
         CommandManager.initCommands();
+
+        LOGGER.info("NoteblockPlayer initialized");
     }
 
     public static ConfigImpl getConfig() {

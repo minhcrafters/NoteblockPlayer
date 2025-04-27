@@ -135,6 +135,7 @@ public class Songs extends Command {
         Style clickableStyle = Style.EMPTY
                 .withColor(Formatting.AQUA)
                 .withBold(true)
+                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal(command)))
                 .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command));
 
         return Text.literal(display).setStyle(clickableStyle);

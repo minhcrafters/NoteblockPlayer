@@ -175,8 +175,11 @@ public class SongHandler {
                 loaderThread = new SongLoaderThread(location);
                 NoteblockPlayer.addChatMessage("§6Loading §3" + location);
                 loaderThread.start();
+                loaderThread.join();
             } catch (IOException e) {
                 NoteblockPlayer.addChatMessage("§cFailed to load song: §4" + e.getMessage());
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
         }
     }
@@ -203,7 +206,6 @@ public class SongHandler {
         if (!NoteblockPlayer.getConfig().survivalOnly) getAndSaveBuildSlot();
         prepareStage();
         NoteblockPlayer.addChatMessage("§6Building noteblocks");
-
     }
 
     private void queueSong(Song song) {
