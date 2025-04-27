@@ -1,12 +1,8 @@
 package me.minhcrafters.noteblockplayer.command.commands;
 
-import me.minhcrafters.noteblockplayer.NoteblockPlayer;
 import me.minhcrafters.noteblockplayer.command.Command;
-import me.minhcrafters.noteblockplayer.command.CommandManager;
-import me.minhcrafters.noteblockplayer.song.SongManager;
-import net.minecraft.text.Text;
-
-import static me.minhcrafters.noteblockplayer.NoteblockPlayer.mc;
+import me.minhcrafters.noteblockplayer.NoteblockPlayer;
+import me.minhcrafters.noteblockplayer.song.SongHandler;
 
 public class Stop extends Command {
     public String getName() {
@@ -14,7 +10,7 @@ public class Stop extends Command {
     }
 
     public String[] getSyntax() {
-        return new String[]{CommandManager.getCommandPrefix() + "stop"};
+        return new String[0];
     }
 
     public String getDescription() {
@@ -22,18 +18,21 @@ public class Stop extends Command {
     }
 
     public boolean processCommand(String args) {
-        if (SongManager.getInstance().currentSong == null && SongManager.getInstance().songQueue.isEmpty()) {
-            NoteblockPlayer.addChatMessage(Text.of("§6No song is currently playing"));
+        if (SongHandler.getInstance().isIdle()) {
+            NoteblockPlayer.addChatMessage("§6No song is currently playing");
             return true;
         }
         if (args.length() == 0) {
-            if (SongManager.getInstance().stage != null) {
-                SongManager.getInstance().stage.movePlayerToStagePosition();
+            if (SongHandler.getInstance().cleaningUp) {
+                SongHandler.getInstance().restoreStateAndReset();
+                NoteblockPlayer.addChatMessage("§6Stopped cleanup");
+            } else if (NoteblockPlayer.getConfig().autoCleanup && SongHandler.getInstance().originalBlocks.size() != 0) {
+                SongHandler.getInstance().partialResetAndCleanup();
+                NoteblockPlayer.addChatMessage("§6Stopped playing and switched to cleanup");
+            } else {
+                SongHandler.getInstance().restoreStateAndReset();
+                NoteblockPlayer.addChatMessage("§6Stopped playing");
             }
-            SongManager.getInstance().restoreStateAndCleanUp();
-            mc.player.getAbilities().flying = false;
-            mc.player.getAbilities().allowFlying = false;
-            NoteblockPlayer.addChatMessage(Text.of("§6Stopped playing"));
             return true;
         } else {
             return false;

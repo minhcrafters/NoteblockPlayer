@@ -10,25 +10,26 @@
   "license": "MIT",
   "icon": "assets/noteblockplayer/icon.png",
   "environment": "*",
-  "accessWidener" : "noteblockplayer.accesswidener",
+  "accessWidener": "noteblockplayer.accesswidener",
   "entrypoints": {
     "main": [
       "me.minhcrafters.noteblockplayer.NoteblockPlayer"
     ],
     "modmenu": [
-      "me.minhcrafters.noteblockplayer.config.ModMenuIntegration"
+      "me.minhcrafters.noteblockplayer.config.ModMenuImpl"
     ]
   },
   "mixins": [
     "noteblockplayer.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.14.18",
+    "fabricloader": ">=0.16.0",
     "fabric": "*",
-    "minecraft": ">=1.20",
-    "java": ">=17"
+    "minecraft": "~1.21.4",
+    "java": ">=21"
   },
   "suggests": {
-    "flamingo": "*"
+    "flamingo": "*",
+    "modmenu": "*"
   }
 }

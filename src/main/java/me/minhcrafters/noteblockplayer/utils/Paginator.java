@@ -8,8 +8,6 @@ import net.minecraft.text.Text;
 
 import java.util.ArrayList;
 
-import static me.minhcrafters.noteblockplayer.NoteblockPlayer.FORCE_COMMAND_PREFIX;
-
 public class Paginator {
     public ArrayList<Text> entries;
     public String pageTitle;
@@ -53,7 +51,7 @@ public class Paginator {
 
         if (pageNumber <= totalPagesCount && pageNumber > 0) {
             if (entries.isEmpty()) {
-                NoteblockPlayer.addChatMessage(Text.of("§cThe list is empty!"));
+                NoteblockPlayer.addChatMessage(Text.literal("§cThe list is empty!"));
             } else {
                 NoteblockPlayer.addChatMessage(Text.literal("§6-----------------------------------").append("§r\n").append(pageTitle));
 
@@ -67,10 +65,10 @@ public class Paginator {
                     NoteblockPlayer.addChatMessage(Text.literal("§6> ").append(entries.get(i)));
                 }
 
-                NoteblockPlayer.addChatMessage(Text.of("§6-----------------------------------"));
+                NoteblockPlayer.addChatMessage(Text.literal("§6-----------------------------------"));
             }
         } else {
-            NoteblockPlayer.addChatMessage(Text.of("§cThere are only §3" + totalPagesCount + "§c pages!"));
+            NoteblockPlayer.addChatMessage(Text.literal("§cThere are only §3" + totalPagesCount + "§c pages!"));
         }
     }
 }

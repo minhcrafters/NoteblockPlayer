@@ -1,100 +1,203 @@
 package me.minhcrafters.noteblockplayer.command;
 
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import me.minhcrafters.noteblockplayer.NoteblockPlayer;
-import me.minhcrafters.noteblockplayer.command.commands.Queue;
 import me.minhcrafters.noteblockplayer.command.commands.*;
+import me.minhcrafters.noteblockplayer.command.commands.Queue;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.command.CommandSource;
+import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.Text;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import static me.minhcrafters.noteblockplayer.NoteblockPlayer.FORCE_COMMAND_PREFIX;
-
 public class CommandManager {
     public static ArrayList<Command> commands = new ArrayList<>();
     public static HashMap<String, Command> commandMap = new HashMap<>();
     public static ArrayList<String> commandCompletions = new ArrayList<>();
+    public static final String COMMAND_ROOT = "nbp";
 
     public static void initCommands() {
-        commands.add(new Help());
-        commands.add(new Play());
-        commands.add(new Stop());
-        commands.add(new Skip());
-        commands.add(new Peek());
-        commands.add(new Pause());
-        commands.add(new Loop());
-        commands.add(new Status());
-        commands.add(new Queue());
-        commands.add(new Songs());
-        commands.add(new MusicSheet());
-        commands.add(new StageType());
-        commands.add(new SetPrefix());
-        commands.add(new ToggleFakePlayer());
-        commands.add(new DebugTest());
-
-        commands.sort(Comparator.comparing(Command::getName));
-
+        registerCommand(new Help());
+        registerCommand(new Play());
+        registerCommand(new Stop());
+        registerCommand(new Skip());
+        registerCommand(new Goto());
+        registerCommand(new Loop());
+        registerCommand(new Status());
+        registerCommand(new Queue());
+        registerCommand(new Songs());
+        registerCommand(new MaxRadius());
+        registerCommand(new PlaylistCommand());
+        registerCommand(new SetCreativeCommand());
+        registerCommand(new SetSurvivalCommand());
+        registerCommand(new UseEssentialsCommands());
+        registerCommand(new UseVanillaCommands());
+        registerCommand(new ToggleFakePlayer());
+        registerCommand(new SetStageType());
+        registerCommand(new BreakSpeed());
+        registerCommand(new PlaceSpeed());
+        registerCommand(new ToggleMovement());
+        registerCommand(new SetVelocityThreshold());
+        registerCommand(new ToggleAutoCleanup());
+        registerCommand(new CleanupLastStage());
+        registerCommand(new Announcement());
+        registerCommand(new ToggleSurvivalOnly());
+        registerCommand(new ToggleFlightNoClip());
+        registerCommand(new SongItem());
+        registerCommand(new TestSong());
+        
+        // Register commands with Brigadier
+        CommandRegistrationCallback.EVENT.register(CommandManager::registerBrigadierCommands);
+    }
+    
+    private static void registerCommand(Command command) {
+        commands.add(command);
+        commandMap.put(command.getName().toLowerCase(Locale.ROOT), command);
+        commandCompletions.add(command.getName());
+        for (String alias : command.getAliases()) {
+            commandMap.put(alias.toLowerCase(Locale.ROOT), command);
+            commandCompletions.add(alias);
+        }
+    }
+    
+    private static void registerBrigadierCommands(CommandDispatcher<ServerCommandSource> dispatcher, 
+                                                 CommandRegistryAccess registryAccess, 
+                                                 net.minecraft.server.command.CommandManager.RegistrationEnvironment environment) {
+        // Create the main command node
+        LiteralArgumentBuilder<ServerCommandSource> rootCommand = net.minecraft.server.command.CommandManager.literal(COMMAND_ROOT);
+        
+        // Register each subcommand
         for (Command command : commands) {
-            commandMap.put(command.getName().toLowerCase(Locale.ROOT), command);
-            commandCompletions.add(command.getName());
+            LiteralArgumentBuilder<ServerCommandSource> subCommand = net.minecraft.server.command.CommandManager.literal(command.getName());
+            
+            // If the command has no syntax, it can be executed without arguments
+            if (command.getSyntax().length == 0) {
+                subCommand.executes(context -> executeCommand(context, command, ""));
+            }
+            
+            // Add arguments handler
+            subCommand.then(net.minecraft.server.command.CommandManager.argument("args", StringArgumentType.greedyString())
+                    .suggests((context, builder) -> suggestArguments(command, "", builder))
+                    .executes(context -> executeCommand(context, command, StringArgumentType.getString(context, "args"))));
+            
+            // Add the subcommand to the root command
+            rootCommand.then(subCommand);
+            
+            // Register aliases as separate commands
             for (String alias : command.getAliases()) {
-                commandMap.put(alias.toLowerCase(Locale.ROOT), command);
-                commandCompletions.add(alias);
+                LiteralArgumentBuilder<ServerCommandSource> aliasCommand = net.minecraft.server.command.CommandManager.literal(alias);
+                
+                if (command.getSyntax().length == 0) {
+                    aliasCommand.executes(context -> executeCommand(context, command, ""));
+                }
+                
+                aliasCommand.then(net.minecraft.server.command.CommandManager.argument("args", StringArgumentType.greedyString())
+                        .suggests((context, builder) -> suggestArguments(command, "", builder))
+                        .executes(context -> executeCommand(context, command, StringArgumentType.getString(context, "args"))));
+                
+                rootCommand.then(aliasCommand);
             }
         }
+        
+        // Register the complete command
+        dispatcher.register(rootCommand);
     }
-
-    // returns true if it is a command and should be cancelled
-    public static boolean processChatMessage(String message) {
-        if (message.startsWith(NoteblockPlayer.getConfig().commandPrefix) || message.startsWith(FORCE_COMMAND_PREFIX)) {
-            String[] parts = message.substring(1).split(" ", 2);
-            String name = parts.length > 0 ? parts[0] : "";
-            String args = parts.length > 1 ? parts[1] : "";
-            Command c = commandMap.get(name.toLowerCase(Locale.ROOT));
-            if (c == null) {
-                NoteblockPlayer.addChatMessage(Text.of("§cInvalid command. Use " + NoteblockPlayer.getConfig().commandPrefix + "help to get help in using this mod."));
-            } else {
-                try {
-                    boolean success = c.processCommand(args);
-                    if (!success) {
-                        NoteblockPlayer.addChatMessage(Text.of("§cInvalid syntax.\nCorrect usage: " + String.join("\n", c.getSyntax())));
+    
+    private static int executeCommand(CommandContext<ServerCommandSource> context, Command command, String args) {
+        try {
+            boolean success = command.processCommand(args);
+            if (!success) {
+                if (command.getSyntax().length == 0) {
+                    context.getSource().sendFeedback(() -> Text.literal("§cSyntax: /" + COMMAND_ROOT + " " + command.getName()), false);
+                } else if (command.getSyntax().length == 1) {
+                    context.getSource().sendFeedback(() -> Text.literal("§cSyntax: /" + COMMAND_ROOT + " " + command.getName() + " " + command.getSyntax()[0]), false);
+                } else {
+                    context.getSource().sendFeedback(() -> Text.literal("§cSyntax:"), false);
+                    for (String syntax : command.getSyntax()) {
+                        context.getSource().sendFeedback(() -> Text.literal("§c    /" + COMMAND_ROOT + " " + command.getName() + " " + syntax), false);
                     }
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                    NoteblockPlayer.addChatMessage(Text.of("§cAn error occurred while running this command: §4" + e.getMessage()));
                 }
+                return 0;
             }
-            return true;
-        } else {
-            return false;
+            return 1;
+        } catch (Throwable e) {
+            e.printStackTrace();
+            context.getSource().sendFeedback(() -> Text.literal("§cAn error occurred while running this command: §4" + e.getMessage()), false);
+            return 0;
         }
     }
-
-    // prefix included in command string
-    public static CompletableFuture<Suggestions> handleSuggestions(String text, SuggestionsBuilder suggestionsBuilder) {
-        if (!text.contains(" ")) {
-            List<String> names = commandCompletions
-                    .stream()
-                    .map((commandName) -> NoteblockPlayer.getConfig().commandPrefix + commandName)
-                    .collect(Collectors.toList());
-            return CommandSource.suggestMatching(names, suggestionsBuilder);
-        } else {
-            String[] split = text.split(" ");
-            if (split[0].startsWith(NoteblockPlayer.getConfig().commandPrefix)) {
-                String commandName = split[0].substring(1).toLowerCase(Locale.ROOT);
-                if (commandMap.containsKey(commandName)) {
-                    return commandMap.get(commandName).getSuggestions(split.length == 1 ? "" : split[1], suggestionsBuilder);
-                }
-            }
-            return null;
-        }
+    
+    private static CompletableFuture<Suggestions> suggestArguments(Command command, String args, SuggestionsBuilder builder) {
+        return command.getSuggestions(args, builder);
     }
-
-    public static String getCommandPrefix() {
-        return NoteblockPlayer.getConfig().commandPrefix;
-    }
+    
+//    /**
+//     * @deprecated This method is preserved for backward compatibility. Use brigadier commands instead.
+//     */
+//    @Deprecated
+//    public static boolean processChatMessage(String message) {
+//        if (message.startsWith(NoteblockPlayer.getConfig().prefix)) {
+//            String[] parts = message.substring(NoteblockPlayer.getConfig().prefix.length()).split(" ", 2);
+//            String name = parts.length > 0 ? parts[0] : "";
+//            String args = parts.length > 1 ? parts[1] : "";
+//            Command c = commandMap.get(name.toLowerCase(Locale.ROOT));
+//            if (c == null) {
+//                NoteblockPlayer.addChatMessage("§cUnrecognized command");
+//            } else {
+//                try {
+//                    boolean success = c.processCommand(args);
+//                    if (!success) {
+//                        if (c.getSyntax().length == 0) {
+//                            NoteblockPlayer.addChatMessage("§cSyntax: " + NoteblockPlayer.getConfig().prefix + c.getName());
+//                        } else if (c.getSyntax().length == 1) {
+//                            NoteblockPlayer.addChatMessage("§cSyntax: " + NoteblockPlayer.getConfig().prefix + c.getName() + " " + c.getSyntax()[0]);
+//                        } else {
+//                            NoteblockPlayer.addChatMessage("§cSyntax:");
+//                            for (String syntax : c.getSyntax()) {
+//                                NoteblockPlayer.addChatMessage("§c    " + NoteblockPlayer.getConfig().prefix + c.getName() + " " + syntax);
+//                            }
+//                        }
+//                    }
+//                } catch (Throwable e) {
+//                    e.printStackTrace();
+//                    NoteblockPlayer.addChatMessage("§cAn error occurred while running this command: §4" + e.getMessage());
+//                }
+//            }
+//            return true;
+//        } else {
+//            return false;
+//        }
+//    }
+//
+//    /**
+//     * @deprecated This method is preserved for backward compatibility. Brigadier handles suggestions internally.
+//     */
+//    @Deprecated
+//    public static CompletableFuture<Suggestions> handleSuggestions(String text, SuggestionsBuilder suggestionsBuilder) {
+//        if (!text.contains(" ")) {
+//            List<String> names = commandCompletions
+//                    .stream()
+//                    .map((commandName) -> NoteblockPlayer.getConfig().prefix + commandName)
+//                    .collect(Collectors.toList());
+//            return CommandSource.suggestMatching(names, suggestionsBuilder);
+//        } else {
+//            String[] split = text.split(" ", 2);
+//            if (split[0].startsWith(NoteblockPlayer.getConfig().prefix)) {
+//                String commandName = split[0].substring(1).toLowerCase(Locale.ROOT);
+//                if (commandMap.containsKey(commandName)) {
+//                    return commandMap.get(commandName).getSuggestions(split.length == 1 ? "" : split[1], suggestionsBuilder);
+//                }
+//            }
+//            return null;
+//        }
+//    }
 }

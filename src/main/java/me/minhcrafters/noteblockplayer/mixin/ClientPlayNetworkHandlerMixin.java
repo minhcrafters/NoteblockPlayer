@@ -1,83 +1,97 @@
 package me.minhcrafters.noteblockplayer.mixin;
 
-import me.minhcrafters.noteblockplayer.NoteblockPlayer;
 import me.minhcrafters.noteblockplayer.command.CommandManager;
-import me.minhcrafters.noteblockplayer.song.SongManager;
+import me.minhcrafters.noteblockplayer.NoteblockPlayer;
+import me.minhcrafters.noteblockplayer.song.SongHandler;
 import me.minhcrafters.noteblockplayer.stage.Stage;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
-import net.minecraft.entity.EntityPose;
-import net.minecraft.network.ClientConnection;
-import net.minecraft.network.packet.Packet;
-import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
-import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
-import net.minecraft.network.packet.s2c.play.GameJoinS2CPacket;
-import net.minecraft.network.packet.s2c.play.PlayerAbilitiesS2CPacket;
-import net.minecraft.network.packet.s2c.play.PlayerRespawnS2CPacket;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.network.packet.s2c.play.*;
+import net.minecraft.util.math.Vec3d;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ClientPlayNetworkHandler.class)
 public class ClientPlayNetworkHandlerMixin {
-    @Shadow
-    private final ClientConnection connection;
-
-    public ClientPlayNetworkHandlerMixin() {
-        connection = null;
-    }
-
-    @Inject(at = @At("HEAD"), method = "sendChatMessage(Ljava/lang/String;)V", cancellable = true)
-    private void onSendChatMessage(String content, CallbackInfo ci) {
-        boolean isCommand = CommandManager.processChatMessage(content);
-        if (isCommand) {
-            ci.cancel();
-        }
-    }
-
-    @Inject(at = @At("HEAD"), method = "sendPacket(Lnet/minecraft/network/packet/Packet;)V", cancellable = true)
-    private void onSendPacket(Packet<?> packet, CallbackInfo ci) {
-        Stage stage = SongManager.getInstance().stage;
-        if (stage != null && packet instanceof PlayerMoveC2SPacket) {
-            if (!NoteblockPlayer.getConfig().bodyRotate) {
-                connection.send(new PlayerMoveC2SPacket.PositionAndOnGround(stage.position.getX() + 0.5, stage.position.getY(), stage.position.getZ() + 0.5, true));
-            } else {
-                connection.send(new PlayerMoveC2SPacket.Full(stage.position.getX() + 0.5, stage.position.getY(), stage.position.getZ() + 0.5, NoteblockPlayer.mc.player.getYaw(), NoteblockPlayer.mc.player.getPitch(), true));
-                if (NoteblockPlayer.fakePlayer != null) {
-                    NoteblockPlayer.fakePlayer.copyStagePosAndPlayerLook();
-                }
-            }
-            ci.cancel();
-        } else if (packet instanceof ClientCommandC2SPacket) {
-            ClientCommandC2SPacket.Mode mode = ((ClientCommandC2SPacket) packet).getMode();
-            if (NoteblockPlayer.fakePlayer != null) {
-                if (mode == ClientCommandC2SPacket.Mode.PRESS_SHIFT_KEY) {
-                    NoteblockPlayer.fakePlayer.setSneaking(true);
-                    NoteblockPlayer.fakePlayer.setPose(EntityPose.CROUCHING);
-                } else if (mode == ClientCommandC2SPacket.Mode.RELEASE_SHIFT_KEY) {
-                    NoteblockPlayer.fakePlayer.setSneaking(false);
-                    NoteblockPlayer.fakePlayer.setPose(EntityPose.STANDING);
-                }
-            }
-        }
-    }
+//    @Inject(at = @At("HEAD"), method = "sendChatMessage(Ljava/lang/String;)V", cancellable = true)
+//    private void onSendChatMessage(String content, CallbackInfo ci) {
+//        boolean isCommand = CommandManager.processChatMessage(content);
+//        if (isCommand) {
+//            ci.cancel();
+//        }
+//    }
 
     @Inject(at = @At("TAIL"), method = "onGameJoin(Lnet/minecraft/network/packet/s2c/play/GameJoinS2CPacket;)V")
     public void onOnGameJoin(GameJoinS2CPacket packet, CallbackInfo ci) {
-        SongManager.getInstance().cleanup();
+        SongHandler.getInstance().reset();
     }
 
     @Inject(at = @At("TAIL"), method = "onPlayerRespawn(Lnet/minecraft/network/packet/s2c/play/PlayerRespawnS2CPacket;)V")
     public void onOnPlayerRespawn(PlayerRespawnS2CPacket packet, CallbackInfo ci) {
-        SongManager.getInstance().cleanup();
+        SongHandler.getInstance().reset();
+    }
+
+    @Inject(at = @At("TAIL"), method = "onPlayerPositionLook(Lnet/minecraft/network/packet/s2c/play/PlayerPositionLookS2CPacket;)V")
+    public void onOnPlayerPositionLook(PlayerPositionLookS2CPacket packet, CallbackInfo ci) {
+        Stage lastStage = SongHandler.getInstance().lastStage;
+        ClientPlayerEntity player = NoteblockPlayer.mc.player;
+        if (!SongHandler.getInstance().isIdle() && lastStage != null) {
+            Vec3d stageOriginBottomCenter = lastStage.getOriginBottomCenter();
+            boolean xrel = packet.relatives().contains(PositionFlag.X);
+            boolean yrel = packet.relatives().contains(PositionFlag.Y);
+            boolean zrel = packet.relatives().contains(PositionFlag.Z);
+            double dx;
+            double dy;
+            double dz;
+            // Relative position sets need to be handled differently because client-side position doesn't match server-side position
+            if (xrel) {
+                dx = packet.change().position().getX();
+            } else {
+                dx = player.getX() - stageOriginBottomCenter.getX();
+            }
+            if (yrel) {
+                dy = packet.change().position().getY();
+            } else {
+                dy = player.getY() - stageOriginBottomCenter.getY();
+            }
+            if (zrel) {
+                dz = packet.change().position().getZ();
+            } else {
+                dz = player.getZ() - stageOriginBottomCenter.getZ();
+            }
+            double distsq = dx * dx + dy * dy + dz * dz;
+            if (distsq > 3.0 * 3.0) {
+                // Set client position to where server thinks player should be
+                if (player != null) {
+                    player.refreshPositionAndAngles(
+                            xrel ? stageOriginBottomCenter.getX() + dz : player.getX(),
+                            yrel ? stageOriginBottomCenter.getY() + dy : player.getY(),
+                            zrel ? stageOriginBottomCenter.getZ() + dz : player.getZ(),
+                            player.getYaw(), player.getPitch()
+                    );
+                }
+                NoteblockPlayer.addChatMessage("§6Stopped playing/building because the server moved the player too far from the stage!");
+                SongHandler.getInstance().restoreStateAndReset(false);
+            } else {
+                lastStage.movePlayerToStagePosition();
+            }
+        }
     }
 
     @Inject(at = @At("TAIL"), method = "onPlayerAbilities(Lnet/minecraft/network/packet/s2c/play/PlayerAbilitiesS2CPacket;)V")
     public void onOnPlayerAbilities(PlayerAbilitiesS2CPacket packet, CallbackInfo ci) {
-        SongManager songManager = SongManager.getInstance();
-        if (songManager.currentSong != null || !songManager.songQueue.isEmpty()) {
-            NoteblockPlayer.mc.player.getAbilities().flying = songManager.wasFlying;
+        SongHandler handler = SongHandler.getInstance();
+        if (!handler.isIdle()) {
+            NoteblockPlayer.mc.player.getAbilities().flying = handler.wasFlying;
+        }
+    }
+
+    @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/Entity;setVelocityClient(DDD)V"), method = "onEntityVelocityUpdate", cancellable = true)
+    public void onOnEntityVelocityUpdate(EntityVelocityUpdateS2CPacket packet, CallbackInfo ci) {
+        if (!SongHandler.getInstance().isIdle() && packet.getEntityId() == NoteblockPlayer.mc.player.getId()) {
+            ci.cancel();
         }
     }
 }

@@ -1,7 +1,7 @@
 package me.minhcrafters.noteblockplayer.song.item;
 
 import me.minhcrafters.noteblockplayer.NoteblockPlayer;
-import me.minhcrafters.noteblockplayer.song.SongManager;
+import me.minhcrafters.noteblockplayer.song.SongHandler;
 import net.minecraft.client.font.MultilineText;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -11,20 +11,19 @@ import net.minecraft.text.Text;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class SongItemConfirmationScreen extends Screen {
-    private static final Text CONFIRM = Text.literal("Play");
-    private static final Text CANCEL = Text.literal("Cancel");
     private ItemStack stack;
     private SongItemLoaderThread loaderThread;
     private MultilineText unloadedText;
     private MultilineText loadedText;
     private boolean loaded = false;
 
+    private static final Text CONFIRM = Text.literal("Play");
+    private static final Text CANCEL = Text.literal("Cancel");
+
     public SongItemConfirmationScreen(ItemStack stack) throws IOException, IllegalArgumentException {
-        super(Text.literal("Are you sure you want to play this music sheet?"));
+        super(Text.literal("Use song item"));
         this.stack = stack;
         this.loaderThread = new SongItemLoaderThread(stack);
         this.loaderThread.start();
@@ -33,7 +32,7 @@ public class SongItemConfirmationScreen extends Screen {
     @Override
     protected void init() {
         super.init();
-        String unloadedMessage = "§7Loading notes...";
+        String unloadedMessage = "§7Loading song...";
         this.unloadedText = MultilineText.create(this.textRenderer, Text.literal(unloadedMessage));
     }
 
@@ -41,7 +40,7 @@ public class SongItemConfirmationScreen extends Screen {
         int centerX = this.width / 2;
 
         this.addDrawableChild(ButtonWidget.builder(CONFIRM, button -> {
-            SongManager.getInstance().loadSong(loaderThread);
+            SongHandler.getInstance().loadSong(loaderThread);
             this.client.setScreen(null);
         }).dimensions(centerX - 105, y, 100, 20).build());
 
@@ -52,24 +51,24 @@ public class SongItemConfirmationScreen extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        this.renderBackground(context);
+        super.render(context, mouseX, mouseY, delta);
 
-        context.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 40, 0xFFFFFF);
+        context.drawCenteredTextWithShadow(textRenderer, this.title, this.width / 2, 40, 0xFFFFFF);
 
         if (!loaderThread.isAlive()) {
             if (loaderThread.exception != null) {
-                NoteblockPlayer.addChatMessage("§cError: §4" + loaderThread.exception.getMessage());
+                NoteblockPlayer.addChatMessage("§cError loading song item: §4" + loaderThread.exception.getMessage());
                 this.client.setScreen(null);
                 return;
-            } else if (loadedText == null) {
+            }
+            else if (loadedText == null) {
                 String[] loadedMessages = {
                         "§3" + loaderThread.song.name,
                         String.format("§7Max notes per second: %s%d", getNumberColor(loaderThread.maxNotesPerSecond), loaderThread.maxNotesPerSecond),
-                        String.format("§7Average notes per second: %s%.2f", getNumberColor(loaderThread.avgNotesPerSecond), loaderThread.avgNotesPerSecond),
+                        String.format("§7Avg notes per second: %s%.2f", getNumberColor(loaderThread.avgNotesPerSecond), loaderThread.avgNotesPerSecond),
                 };
-                List<Text> messageList = Arrays.stream(loadedMessages).map(Text::literal).collect(Collectors.toList());
-                ;
-                this.loadedText = MultilineText.createFromTexts(this.textRenderer, messageList);
+                Text[] messageList = Arrays.stream(loadedMessages).map(Text::literal).toArray(Text[]::new);
+                this.loadedText = MultilineText.create(this.textRenderer, messageList);
 
                 int loadedTextHeight = this.loadedText.count() * this.textRenderer.fontHeight;
                 addButtons(60 + loadedTextHeight + 12);
@@ -80,23 +79,26 @@ public class SongItemConfirmationScreen extends Screen {
 
         if (loaded) {
             loadedText.drawCenterWithShadow(context, this.width / 2, 60);
-        } else {
+        }
+        else {
             unloadedText.drawCenterWithShadow(context, this.width / 2, 60);
         }
-
-        super.render(context, mouseX, mouseY, delta);
     }
 
     public String getNumberColor(double number) {
         if (number < 50) {
             return "§a";
-        } else if (number < 100) {
+        }
+        else if (number < 100) {
             return "§e";
-        } else if (number < 300) {
+        }
+        else if (number < 300) {
             return "§6";
-        } else if (number < 600) {
+        }
+        else if (number < 600) {
             return "§c";
-        } else {
+        }
+        else {
             return "§4";
         }
 

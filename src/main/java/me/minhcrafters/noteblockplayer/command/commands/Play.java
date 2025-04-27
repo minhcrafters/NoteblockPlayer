@@ -2,18 +2,12 @@ package me.minhcrafters.noteblockplayer.command.commands;
 
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import me.minhcrafters.noteblockplayer.NoteblockPlayer;
 import me.minhcrafters.noteblockplayer.command.Command;
-import me.minhcrafters.noteblockplayer.command.CommandManager;
-import me.minhcrafters.noteblockplayer.song.SongManager;
-import me.minhcrafters.noteblockplayer.utils.FileUtils;
-import net.minecraft.command.CommandSource;
+import me.minhcrafters.noteblockplayer.NoteblockPlayer;
+import me.minhcrafters.noteblockplayer.utils.Utils;
+import me.minhcrafters.noteblockplayer.song.SongHandler;
+import net.minecraft.world.GameMode;
 
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 public class Play extends Command {
@@ -22,7 +16,7 @@ public class Play extends Command {
     }
 
     public String[] getSyntax() {
-        return new String[]{CommandManager.getCommandPrefix() + "play <song or url>"};
+        return new String[]{"<song or url>"};
     }
 
     public String getDescription() {
@@ -30,8 +24,13 @@ public class Play extends Command {
     }
 
     public boolean processCommand(String args) {
-        if (!args.isEmpty()) {
-            SongManager.getInstance().loadSong(args);
+        if (args.length() > 0) {
+            if (NoteblockPlayer.getConfig().survivalOnly && NoteblockPlayer.mc.interactionManager.getCurrentGameMode() != GameMode.SURVIVAL) {
+                NoteblockPlayer.addChatMessage("§cTo play in survival only mode, you must be in survival mode to start with.");
+                return true;
+            }
+
+            SongHandler.getInstance().loadSong(args);
             return true;
         } else {
             return false;
@@ -39,6 +38,6 @@ public class Play extends Command {
     }
 
     public CompletableFuture<Suggestions> getSuggestions(String args, SuggestionsBuilder suggestionsBuilder) {
-        return FileUtils.giveSongSuggestions(args, suggestionsBuilder);
+        return Utils.giveSongSuggestions(args, suggestionsBuilder);
     }
 }

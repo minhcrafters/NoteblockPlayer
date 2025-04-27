@@ -1,10 +1,8 @@
 package me.minhcrafters.noteblockplayer.command.commands;
 
-import me.minhcrafters.noteblockplayer.NoteblockPlayer;
 import me.minhcrafters.noteblockplayer.command.Command;
-import me.minhcrafters.noteblockplayer.command.CommandManager;
-import me.minhcrafters.noteblockplayer.song.SongManager;
-import net.minecraft.text.Text;
+import me.minhcrafters.noteblockplayer.NoteblockPlayer;
+import me.minhcrafters.noteblockplayer.song.SongHandler;
 
 public class Skip extends Command {
     public String getName() {
@@ -12,7 +10,7 @@ public class Skip extends Command {
     }
 
     public String[] getSyntax() {
-        return new String[]{CommandManager.getCommandPrefix() + "skip"};
+        return new String[0];
     }
 
     public String getDescription() {
@@ -20,12 +18,12 @@ public class Skip extends Command {
     }
 
     public boolean processCommand(String args) {
-        if (SongManager.getInstance().currentSong == null) {
-            NoteblockPlayer.addChatMessage(Text.of("§6No song is currently playing"));
+        if (SongHandler.getInstance().currentSong == null) {
+            NoteblockPlayer.addChatMessage("§6No song is currently playing");
             return true;
         }
-        if (args.isEmpty()) {
-            SongManager.getInstance().currentSong = null;
+        if (args.length() == 0) {
+            SongHandler.getInstance().currentSong = null;
             return true;
         } else {
             return false;

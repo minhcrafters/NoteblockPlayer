@@ -1,11 +1,10 @@
 package me.minhcrafters.noteblockplayer.command.commands;
 
-import me.minhcrafters.noteblockplayer.NoteblockPlayer;
 import me.minhcrafters.noteblockplayer.command.Command;
-import me.minhcrafters.noteblockplayer.command.CommandManager;
+import me.minhcrafters.noteblockplayer.NoteblockPlayer;
+import me.minhcrafters.noteblockplayer.utils.TimeUtils;
+import me.minhcrafters.noteblockplayer.song.SongHandler;
 import me.minhcrafters.noteblockplayer.song.Song;
-import me.minhcrafters.noteblockplayer.song.SongManager;
-import net.minecraft.text.Text;
 
 public class Status extends Command {
     public String getName() {
@@ -13,11 +12,11 @@ public class Status extends Command {
     }
 
     public String[] getAliases() {
-        return new String[]{"current", "nowplaying", "np"};
+        return new String[]{"current", "songinfo"};
     }
 
     public String[] getSyntax() {
-        return new String[]{CommandManager.getCommandPrefix() + "status"};
+        return new String[0];
     }
 
     public String getDescription() {
@@ -25,21 +24,27 @@ public class Status extends Command {
     }
 
     public boolean processCommand(String args) {
-        if (args.length() == 0) {
-            if (SongManager.getInstance().currentSong == null) {
-                NoteblockPlayer.addChatMessage(Text.of("§6No songs are currently playing."));
+        if (args.isEmpty()) {
+            if (SongHandler.getInstance().currentSong == null) {
+                NoteblockPlayer.addChatMessage("§6No song is currently playing");
                 return true;
             }
+            Song currentSong = SongHandler.getInstance().currentSong;
+            long currentTime = Math.min(currentSong.time, currentSong.length);
+            long totalTime = currentSong.length;
 
-            Song currentSong = SongManager.getInstance().currentSong;
-
-            NoteblockPlayer.addChatMessage(Text.of(String.format("""
-                    §6--------- §3Now playing §6---------
-                    §6Name: §3%s
-                    §6Author: §3%s
-                    §6Original author: §3%s
-                    §6Description: §3%s
-                    """, currentSong.name, currentSong.author, currentSong.originalAuthor, currentSong.description)));
+            // Build pretty-printed song information
+            String songInfo = "§6----- Song Information -----\n" +
+                    String.format("§6Title        : §3%s\n", currentSong.name) +
+                    String.format("§6Author       : §3%s\n", currentSong.author) +
+                    String.format("§6Description  : §3%s\n", currentSong.description.isEmpty() ? "N/A" : currentSong.description) +
+                    String.format("§6Time         : §3%s / %s\n", TimeUtils.formatTime(currentTime), TimeUtils.formatTime(totalTime)) +
+                    String.format("§6Layers Count : §3%s\n", currentSong.getLayers().size()) +
+                    String.format("§6Notes count  : §3%d\n", currentSong.getTotalNotes().size()) +
+                    String.format("§6Current Note : §3%d\n", currentSong.position) +
+                    String.format("§6Looping      : §3%s\n", currentSong.looping ? "Yes" : "No") +
+                    String.format("§6Paused       : §3%s", currentSong.paused ? "Yes" : "No");
+            NoteblockPlayer.addChatMessage(songInfo);
             return true;
         } else {
             return false;

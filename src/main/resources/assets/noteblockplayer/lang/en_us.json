@@ -2,8 +2,11 @@
   "noteblockplayer.config.title": "NoteblockPlayer Configuration",
   "noteblockplayer.config.enum.StageType.DEFAULT": "Default",
   "noteblockplayer.config.enum.StageType.WIDE": "Wide",
+  "noteblockplayer.config.enum.StageType.STEREO": "Stereo",
   "noteblockplayer.config.enum.StageType.SPHERICAL": "Spherical",
-  "noteblockplayer.now_playing": "Now playing",
-  "noteblockplayer.building_noteblocks": "Building noteblocks",
-  "noteblockplayer.finished_playing": "Finished playing"
+  "noteblockplayer.config.category.general": "General",
+  "noteblockplayer.config.category.commands": "Commands",
+  "noteblockplayer.config.category.playback": "Playback",
+  "noteblockplayer.config.category.visual": "Visuals",
+  "noteblockplayer.config.category.performance": "Performance"
 }

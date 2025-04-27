@@ -4,9 +4,13 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import me.minhcrafters.noteblockplayer.command.Command;
 import me.minhcrafters.noteblockplayer.command.CommandManager;
-import me.minhcrafters.noteblockplayer.Config;
 import me.minhcrafters.noteblockplayer.NoteblockPlayer;
 import net.minecraft.command.CommandSource;
+import net.minecraft.text.ClickEvent;
+import net.minecraft.text.MutableText;
+import net.minecraft.text.Style;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
@@ -55,19 +59,19 @@ public class Help extends Command {
             int endIndex = Math.min(startIndex + PAGE_SIZE, totalCommands);
             for (int i = startIndex; i < endIndex; i++) {
                 Command c = CommandManager.commands.get(i);
-                NoteblockPlayer.addChatMessage("§3" + Config.getConfig().prefix + c.getName() + " §7 - " + c.getDescription());
+                NoteblockPlayer.addChatMessage("§3" + "/" + CommandManager.COMMAND_ROOT + " " + c.getName() + " §7 - " + c.getDescription());
             }
             // Build navigation with clickable components if available
             StringBuilder nav = new StringBuilder();
             if (pageNumber > 1) {
-                String prevCommand = Config.getConfig().prefix + "help " + (pageNumber - 1);
+                String prevCommand = "/" + CommandManager.COMMAND_ROOT + " " + "help " + (pageNumber - 1);
                 nav.append(createClickableComponent("[Prev]", prevCommand));
             } else {
                 nav.append("§7[Prev]");
             }
             nav.append("  ");
             if (pageNumber < totalPages) {
-                String nextCommand = Config.getConfig().prefix + "help " + (pageNumber + 1);
+                String nextCommand = "/" + CommandManager.COMMAND_ROOT + " " + "help " + (pageNumber + 1);
                 nav.append(createClickableComponent("[Next]", nextCommand));
             } else {
                 nav.append("§7[Next]");
@@ -82,13 +86,13 @@ public class Help extends Command {
                 NoteblockPlayer.addChatMessage("§6Help: §3" + c.getName());
                 NoteblockPlayer.addChatMessage("§6Description: §3" + c.getDescription());
                 if (c.getSyntax().length == 0) {
-                    NoteblockPlayer.addChatMessage("§6Usage: §3" + Config.getConfig().prefix + c.getName());
+                    NoteblockPlayer.addChatMessage("§6Usage: §3" + "/" + CommandManager.COMMAND_ROOT + " " + c.getName());
                 } else if (c.getSyntax().length == 1) {
-                    NoteblockPlayer.addChatMessage("§6Usage: §3" + Config.getConfig().prefix + c.getName() + " " + c.getSyntax()[0]);
+                    NoteblockPlayer.addChatMessage("§6Usage: §3" + "/" + CommandManager.COMMAND_ROOT + " " + c.getName() + " " + c.getSyntax()[0]);
                 } else {
                     NoteblockPlayer.addChatMessage("§6Usage:");
                     for (String syntax : c.getSyntax()) {
-                        NoteblockPlayer.addChatMessage("    §3" + Config.getConfig().prefix + c.getName() + " " + syntax);
+                        NoteblockPlayer.addChatMessage("    §3" + "/" + CommandManager.COMMAND_ROOT + " " + c.getName() + " " + syntax);
                     }
                 }
                 if (c.getAliases().length > 0) {
@@ -106,9 +110,13 @@ public class Help extends Command {
      * Creates a clickable JSON text component.
      * When clicked, the command specified in "command" will be run.
      */
-    private String createClickableComponent(String display, String command) {
-        // This JSON is parsed by the Minecraft chat system if supported.
-        return "{\"text\":\"" + display + "\",\"color\":\"aqua\",\"bold\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"" + command + "\"}}";
+    private MutableText createClickableComponent(String display, String command) {
+        Style clickableStyle = Style.EMPTY
+                .withColor(Formatting.AQUA)
+                .withBold(true)
+                .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command));
+
+        return Text.literal(display).setStyle(clickableStyle);
     }
 
     /**

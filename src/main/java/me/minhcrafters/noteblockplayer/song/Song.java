@@ -2,15 +2,17 @@ package me.minhcrafters.noteblockplayer.song;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 
 public class Song {
-    public ArrayList<Note> notes = new ArrayList<>();
-    public String name;
-    public String author;
-    public String originalAuthor;
-    public String description = "None";
+    private final ArrayList<Note> totalNotes = new ArrayList<>();
+
+    public String name = "";
+    public String author = "";
+    public String description = "";
+
     public int position = 0; // Current note index
-    public boolean[] requiredNotes = new boolean[400];
+    private ArrayList<Layer> layers = new ArrayList<>();
     public boolean looping = false;
     public boolean paused = true;
     public long startTime = 0; // Start time in millis since unix epoch
@@ -20,24 +22,30 @@ public class Song {
     public int loopCount = 0; // Number of times to loop
     public int currentLoop = 0; // Number of loops so far
 
-    public Song(String name, String author, String originalAuthor, String description) {
+    public Song(String name, String author, String description) {
         this.name = name;
         this.author = author;
-        this.originalAuthor = originalAuthor;
         this.description = description;
     }
 
-    public Note get(int i) {
-        return notes.get(i);
-    }
+    private void init() {
+        totalNotes.clear(); // Clear existing notes to start fresh
 
-    public void add(Note e) {
-        notes.add(e);
-        requiredNotes[e.noteId] = true;
-    }
+        // Add all notes from all layers with their respective layer properties
+        for (Layer layer : layers) {
+            for (Note note : layer.getNotes()) {
+                Note clonedNote = new Note(note.noteId, note.time, layer.velocity, layer.panning);
+                totalNotes.add(clonedNote);
+            }
+        }
 
-    public void sort() {
-        Collections.sort(notes);
+        // Sort all notes by time
+        Collections.sort(totalNotes);
+
+        // Update the song length based on the last note's time if there are any notes
+        if (!totalNotes.isEmpty()) {
+            length = totalNotes.getLast().time;
+        }
     }
 
     /**
@@ -61,19 +69,22 @@ public class Song {
         }
     }
 
-    public void resume() {
-        if (paused) {
-            paused = false;
-            // Recalculates time so that the song will continue playing after the exact point it was paused
-            advanceTime();
-        }
+    public void reset() {
+        paused = true;
+        setTime(0);
+        currentLoop = 0;
     }
 
     public void setTime(long t) {
         time = t;
         startTime = System.currentTimeMillis() - time;
         position = 0;
-        while (position < notes.size() && notes.get(position).time < t) {
+
+        ArrayList<Layer> layers = new ArrayList<>(this.layers);
+
+        layers.sort(Comparator.comparingInt(a -> a.getNotes().size()));
+
+        while (position < layers.getLast().getNotes().size() && layers.getLast().getNotes().get(position).time < t) {
             position++;
         }
     }
@@ -82,49 +93,28 @@ public class Song {
         time = System.currentTimeMillis() - startTime;
     }
 
-    public boolean reachedNextNote() {
-        if (position < notes.size()) {
-            return notes.get(position).time <= time;
-        } else {
-            if (time > length && shouldLoop()) {
-                loop();
-                if (position < notes.size()) {
-                    return notes.get(position).time <= time;
-                } else {
-                    return false;
-                }
-            } else {
-                return false;
-            }
-        }
-    }
-
-    public Note getNextNote() {
-        if (position >= notes.size()) {
-            if (shouldLoop()) {
-                loop();
-            } else {
-                return null;
-            }
-        }
-        return notes.get(position++);
-    }
 
     public boolean finished() {
         return time > length && !shouldLoop();
     }
 
-    private void loop() {
+    public void loop() {
         position = 0;
         startTime += length - loopPosition;
         time -= length - loopPosition;
-        while (position < notes.size() && notes.get(position).time < loopPosition) {
+
+        ArrayList<Layer> layers = new ArrayList<>(this.layers);
+
+        layers.sort(Comparator.comparingInt(a -> a.getNotes().size()));
+
+        while (position < layers.getLast().getNotes().size() && layers.getLast().getNotes().get(position).time < loopPosition) {
             position++;
         }
+
         currentLoop++;
     }
 
-    private boolean shouldLoop() {
+    public boolean shouldLoop() {
         if (looping) {
             if (loopCount == 0) {
                 return true;
@@ -136,11 +126,59 @@ public class Song {
         }
     }
 
-    public int size() {
-        return notes.size();
+    public boolean reachedNextNote() {
+        if (position < totalNotes.size()) {
+            return totalNotes.get(position).time <= time;
+        } else {
+            if (time > length && shouldLoop()) {
+                loop();
+                if (position < totalNotes.size()) {
+                    return totalNotes.get(position).time <= time;
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
     }
 
-    public boolean isPaused() {
-        return paused;
+    public Note getNextNote() {
+        if (position >= totalNotes.size()) {
+            if (shouldLoop()) {
+                loop();
+            } else {
+                return null;
+            }
+        }
+        return totalNotes.get(position++);
+    }
+
+    public ArrayList<Note> getTotalNotes() {
+        return totalNotes;
+    }
+
+    /**
+     * Adds a note directly to the song
+     * This is for backward compatibility
+     */
+    public void add(Note note) {
+        if (layers.isEmpty()) {
+            // Create a default layer if none exists
+            Layer defaultLayer = new Layer(this, note.velocity, note.panning);
+            layers.add(defaultLayer);
+        }
+
+        // Add to the first layer
+        layers.getFirst().addNote(note);
+    }
+
+    public void setLayers(ArrayList<Layer> layers) {
+        this.layers = layers;
+        init();
+    }
+
+    public ArrayList<Layer> getLayers() {
+        return layers;
     }
 }
