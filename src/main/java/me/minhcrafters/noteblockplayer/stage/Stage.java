@@ -1,6 +1,7 @@
 package me.minhcrafters.noteblockplayer.stage;
 
 import me.minhcrafters.noteblockplayer.NoteblockPlayer;
+import me.minhcrafters.noteblockplayer.song.Note;
 import me.minhcrafters.noteblockplayer.utils.Utils;
 import me.minhcrafters.noteblockplayer.song.Instrument;
 import me.minhcrafters.noteblockplayer.song.Layer;
@@ -26,7 +27,7 @@ public class Stage {
     private Song currentSong;
     public String worldName;
     public String serverIdentifier;
-    public BlockPos position;
+    public BlockPos playerPosition;
     public HashMap<Integer, BlockPos> noteblockPositions = new HashMap<>();
 
     private float playerYaw = 0;
@@ -40,7 +41,7 @@ public class Stage {
     public LinkedList<BlockPos> requiredClicks = new LinkedList<>();
 
     public Stage() {
-        position = mc.player.getBlockPos();
+        playerPosition = mc.player.getBlockPos();
 
         playerYaw = mc.player.getYaw();
 
@@ -51,16 +52,16 @@ public class Stage {
     }
 
     public void movePlayerToStagePosition() {
-        mc.player.refreshPositionAndAngles(position.getX() + 0.5, position.getY() + 0.0, position.getZ() + 0.5, mc.player.getYaw(), mc.player.getPitch());
+        mc.player.refreshPositionAndAngles(playerPosition.getX() + 0.5, playerPosition.getY() + 0.0, playerPosition.getZ() + 0.5, mc.player.getYaw(), mc.player.getPitch());
         mc.player.setVelocity(Vec3d.ZERO);
         sendMovementPacketToStagePosition();
     }
 
     public void sendMovementPacketToStagePosition() {
         if (NoteblockPlayer.fakePlayer != null) {
-            NoteblockPlayer.mc.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.Full(position.getX() + 0.5, position.getY(), position.getZ() + 0.5, NoteblockPlayer.fakePlayer.getYaw(), NoteblockPlayer.fakePlayer.getPitch(), true, false));
+            NoteblockPlayer.mc.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.Full(playerPosition.getX() + 0.5, playerPosition.getY(), playerPosition.getZ() + 0.5, NoteblockPlayer.fakePlayer.getYaw(), NoteblockPlayer.fakePlayer.getPitch(), true, false));
         } else {
-            NoteblockPlayer.mc.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.Full(position.getX() + 0.5, position.getY(), position.getZ() + 0.5, NoteblockPlayer.mc.player.getYaw(), NoteblockPlayer.mc.player.getPitch(), true, false));
+            NoteblockPlayer.mc.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.Full(playerPosition.getX() + 0.5, playerPosition.getY(), playerPosition.getZ() + 0.5, NoteblockPlayer.mc.player.getYaw(), NoteblockPlayer.mc.player.getPitch(), true, false));
         }
     }
 
@@ -93,8 +94,8 @@ public class Stage {
         if (NoteblockPlayer.getConfig().stageType != StageType.STEREO) {
             noteblockLocations.sort((a, b) -> {
                 // First sort by y
-                int a_dy = a.getY() - position.getY();
-                int b_dy = b.getY() - position.getY();
+                int a_dy = a.getY() - playerPosition.getY();
+                int b_dy = b.getY() - playerPosition.getY();
                 if (a_dy == -1) a_dy = 0; // same layer
                 if (b_dy == -1) b_dy = 0; // same layer
                 if (Math.abs(a_dy) < Math.abs(b_dy)) {
@@ -103,10 +104,10 @@ public class Stage {
                     return 1;
                 }
                 // Then sort by horizontal distance
-                int a_dx = a.getX() - position.getX();
-                int a_dz = a.getZ() - position.getZ();
-                int b_dx = b.getX() - position.getX();
-                int b_dz = b.getZ() - position.getZ();
+                int a_dx = a.getX() - playerPosition.getX();
+                int a_dz = a.getZ() - playerPosition.getZ();
+                int b_dx = b.getX() - playerPosition.getX();
+                int b_dz = b.getZ() - playerPosition.getZ();
                 int a_dist = a_dx * a_dx + a_dz * a_dz;
                 int b_dist = b_dx * b_dx + b_dz * b_dz;
                 if (a_dist < b_dist) {
@@ -168,10 +169,10 @@ public class Stage {
                 return 1;
             }
             // Then sort by horizontal distance
-            int a_dx = a.getX() - position.getX();
-            int a_dz = a.getZ() - position.getZ();
-            int b_dx = b.getX() - position.getX();
-            int b_dz = b.getZ() - position.getZ();
+            int a_dx = a.getX() - playerPosition.getX();
+            int a_dz = a.getZ() - playerPosition.getZ();
+            int b_dx = b.getX() - playerPosition.getX();
+            int b_dz = b.getZ() - playerPosition.getZ();
             int a_dist = a_dx * a_dx + a_dz * a_dz;
             int b_dist = b_dx * b_dx + b_dz * b_dz;
             if (a_dist < b_dist) {
@@ -185,7 +186,7 @@ public class Stage {
             return Double.compare(a_angle, b_angle);
         }).collect(Collectors.toCollection(LinkedList::new));
 
-        if (requiredBreaks.stream().noneMatch(bp -> withinBreakingDist(bp.getX() - position.getX(), bp.getY() - position.getY(), bp.getZ() - position.getZ()))) {
+        if (requiredBreaks.stream().noneMatch(bp -> withinBreakingDist(bp.getX() - playerPosition.getX(), bp.getY() - playerPosition.getY(), bp.getZ() - playerPosition.getZ()))) {
             requiredBreaks.clear();
         }
 
@@ -273,24 +274,24 @@ public class Stage {
         for (int dx = -4; dx <= 4; dx++) {
             for (int dz = -4; dz <= 4; dz++) {
                 if (Math.abs(dx) == 4 && Math.abs(dz) == 4) {
-                    noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + 0, position.getZ() + dz));
-                    noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + 2, position.getZ() + dz));
-                    breakLocations.add(new BlockPos(position.getX() + dx, position.getY() + 1, position.getZ() + dz));
+                    noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + 0, playerPosition.getZ() + dz));
+                    noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + 2, playerPosition.getZ() + dz));
+                    breakLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + 1, playerPosition.getZ() + dz));
                 } else {
-                    noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() - 1, position.getZ() + dz));
-                    noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + 2, position.getZ() + dz));
-                    breakLocations.add(new BlockPos(position.getX() + dx, position.getY() + 0, position.getZ() + dz));
-                    breakLocations.add(new BlockPos(position.getX() + dx, position.getY() + 1, position.getZ() + dz));
+                    noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() - 1, playerPosition.getZ() + dz));
+                    noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + 2, playerPosition.getZ() + dz));
+                    breakLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + 0, playerPosition.getZ() + dz));
+                    breakLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + 1, playerPosition.getZ() + dz));
                 }
             }
         }
         for (int dx = -4; dx <= 4; dx++) {
             for (int dz = -4; dz <= 4; dz++) {
                 if (withinBreakingDist(dx, -3, dz)) {
-                    noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() - 3, position.getZ() + dz));
+                    noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() - 3, playerPosition.getZ() + dz));
                 }
                 if (withinBreakingDist(dx, 4, dz)) {
-                    noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + 4, position.getZ() + dz));
+                    noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + 4, playerPosition.getZ() + dz));
                 }
             }
         }
@@ -300,21 +301,21 @@ public class Stage {
         for (int dx = -5; dx <= 5; dx++) {
             for (int dz = -5; dz <= 5; dz++) {
                 if (withinBreakingDist(dx, 2, dz)) {
-                    noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + 2, position.getZ() + dz));
+                    noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + 2, playerPosition.getZ() + dz));
                     if (withinBreakingDist(dx, -1, dz)) {
-                        noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() - 1, position.getZ() + dz));
-                        breakLocations.add(new BlockPos(position.getX() + dx, position.getY() + 0, position.getZ() + dz));
-                        breakLocations.add(new BlockPos(position.getX() + dx, position.getY() + 1, position.getZ() + dz));
+                        noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() - 1, playerPosition.getZ() + dz));
+                        breakLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + 0, playerPosition.getZ() + dz));
+                        breakLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + 1, playerPosition.getZ() + dz));
                     } else if (withinBreakingDist(dx, 0, dz)) {
-                        noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + 0, position.getZ() + dz));
-                        breakLocations.add(new BlockPos(position.getX() + dx, position.getY() + 1, position.getZ() + dz));
+                        noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + 0, playerPosition.getZ() + dz));
+                        breakLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + 1, playerPosition.getZ() + dz));
                     }
                 }
                 if (withinBreakingDist(dx, -3, dz)) {
-                    noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() - 3, position.getZ() + dz));
+                    noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() - 3, playerPosition.getZ() + dz));
                 }
                 if (withinBreakingDist(dx, 4, dz)) {
-                    noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + 4, position.getZ() + dz));
+                    noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + 4, playerPosition.getZ() + dz));
                 }
             }
         }
@@ -370,18 +371,6 @@ public class Stage {
 
         // Process all song layers and notes
         for (int noteId = 0; noteId < 400; noteId++) {
-            boolean isRequired = false;
-
-            // Check if note is required in any layer
-            for (Layer layer : songLayers) {
-                if (layer.requiredNotes[noteId]) {
-                    isRequired = true;
-                    break;
-                }
-            }
-
-            if (!isRequired) continue;
-
             // Find the layer that uses this note (for velocity/panning information)
             Layer noteLayer = null;
             for (Layer layer : songLayers) {
@@ -391,20 +380,18 @@ public class Stage {
                 }
             }
 
-            // Skip if no layer found (should never happen since we checked isRequired)
+            // Skip if no layer found
             if (noteLayer == null) continue;
 
             // Get velocity and panning from the layer that contains this note
-            int velocity = noteLayer.velocity;
-            int pan = noteLayer.panning;
+            Note currentNote = currentSong.getTotalNotes().get(noteId);
+            int velocity = currentNote.velocity + noteLayer.velocity;
+            int pan = noteLayer.panning + currentNote.panning;
 
-            // Base radius (loud notes closer)
-            double baseRadius = ((100 - velocity) / 99.0) * (maxRadius - 1) + 1;
-            // Base angle around player, relative to player's rotation
-            // Pan 0 = full left, 100 = center, 200 = full right
-            double baseAngle = (pan / 200.0) * maxAngleRad + playerRotationRad;
-
-            // System.out.println("Note " + noteId + " panning: " + pan + " baseRadius: " + baseRadius + " baseAngle: " + Math.toDegrees(baseAngle));
+            // Use the standard calculation for normal notes
+            double baseRadius = (velocity / 200.0) * (maxRadius - 1) + 1;
+            // Pan -100 = full left, 0 = center, 100 = full right
+            double baseAngle = ((pan + 100.0) / 200.0) * maxAngleRad + playerRotationRad;
 
             // Determine vertical position based on the actual layer in the song
             int layerIndex = noteToLayerIndex.getOrDefault(noteId, 0);
@@ -417,7 +404,7 @@ public class Stage {
             // First search attempt in the normal direction
             double deltaAngle = Math.toRadians(5);
             outer:
-            for (int rStep = 0; rStep <= 8; rStep++) {  // Increased max step to 8 for more range
+            for (int rStep = 1; rStep <= 16; rStep++) {
                 double radius = baseRadius + rStep;
                 // Increased angle range for more positions
                 for (int aStep = -6; aStep <= 6; aStep++) {
@@ -425,16 +412,16 @@ public class Stage {
                     int dx = MathHelper.floor(radius * Math.cos(angle));
                     int dz = MathHelper.floor(radius * Math.sin(angle));
                     // Unique key for x/z footprint
-                    String key = (position.getX() + dx) + "," + (position.getZ() + dz);
+                    String key = (playerPosition.getX() + dx) + "," + (playerPosition.getZ() + dz);
                     if (!usedXZ.contains(key)) {
-                        chosen = position.add(dx, dy, dz);
+                        chosen = playerPosition.add(dx, dy, dz);
                         usedXZ.add(key);
                         break outer;
                     }
                 }
                 // If we've gone through a few radius steps and still haven't found a spot,
                 // mark as overlapping so we can try the opposite direction
-                if (rStep >= 6) {
+                if (rStep == 16) {
                     overlapping = true;
                 }
             }
@@ -454,9 +441,9 @@ public class Stage {
                         int dx = MathHelper.floor(radius * Math.cos(angle));
                         int dz = MathHelper.floor(radius * Math.sin(angle));
                         // Unique key for x/z footprint
-                        String key = (position.getX() + dx) + "," + (position.getZ() + dz);
+                        String key = (playerPosition.getX() + dx) + "," + (playerPosition.getZ() + dz);
                         if (!usedXZ.contains(key)) {
-                            chosen = position.add(dx, dy, dz);
+                            chosen = playerPosition.add(dx, dy, dz);
                             usedXZ.add(key);
                             break outer;
                         }
@@ -475,9 +462,9 @@ public class Stage {
                                 double angle = perpAngle + aStep * deltaAngle;
                                 int dx = MathHelper.floor(radius * Math.cos(angle));
                                 int dz = MathHelper.floor(radius * Math.sin(angle));
-                                String key = (position.getX() + dx) + "," + (position.getZ() + dz);
+                                String key = (playerPosition.getX() + dx) + "," + (playerPosition.getZ() + dz);
                                 if (!usedXZ.contains(key)) {
-                                    chosen = position.add(dx, dy, dz);
+                                    chosen = playerPosition.add(dx, dy, dz);
                                     usedXZ.add(key);
                                     break outer;
                                 }
@@ -497,9 +484,9 @@ public class Stage {
                         double rad = Math.toRadians(angle) + playerRotationRad;
                         int dx = MathHelper.floor(r * Math.cos(rad));
                         int dz = MathHelper.floor(r * Math.sin(rad));
-                        String key = (position.getX() + dx) + "," + (position.getZ() + dz);
+                        String key = (playerPosition.getX() + dx) + "," + (playerPosition.getZ() + dz);
                         if (!usedXZ.contains(key)) {
-                            chosen = position.add(dx, dy, dz);
+                            chosen = playerPosition.add(dx, dy, dz);
                             usedXZ.add(key);
                             break;
                         }
@@ -519,9 +506,9 @@ public class Stage {
                                 double rad = Math.toRadians(angle) + playerRotationRad;
                                 int dx = MathHelper.floor(r * Math.cos(rad));
                                 int dz = MathHelper.floor(r * Math.sin(rad));
-                                String key = (position.getX() + dx) + "," + (position.getZ() + dz);
+                                String key = (playerPosition.getX() + dx) + "," + (playerPosition.getZ() + dz);
                                 if (!usedXZ.contains(key)) {
-                                    chosen = position.add(dx, altDy, dz);
+                                    chosen = playerPosition.add(dx, altDy, dz);
                                     usedXZ.add(key);
                                     break;
                                 }
@@ -539,9 +526,9 @@ public class Stage {
                                 // Only check the perimeter of the current spiral square
                                 if (Math.abs(dx) != spiral && Math.abs(dz) != spiral) continue;
 
-                                String key = (position.getX() + dx) + "," + (position.getZ() + dz);
+                                String key = (playerPosition.getX() + dx) + "," + (playerPosition.getZ() + dz);
                                 if (!usedXZ.contains(key)) {
-                                    chosen = position.add(dx, dy, dz);
+                                    chosen = playerPosition.add(dx, dy, dz);
                                     usedXZ.add(key);
                                 }
                             }
@@ -569,11 +556,11 @@ public class Stage {
                     switch (dy) {
                         case -4: {
                             if (adx < 3 && adz < 3) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
                             if ((adx == 3 ^ adz == 3) && (adx == 0 ^ adz == 0)) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
                             break;
@@ -587,35 +574,35 @@ public class Stage {
                             }
                             if (adz + adx == 5 && adx != 0 && adz != 0) {
                                 // add noteblocks above and below here
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy + 1, position.getZ() + dz));
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy - 1, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy + 1, playerPosition.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy - 1, playerPosition.getZ() + dz));
                                 break;
                             }
                             if (adz * adx == 3) {
                                 // add noteblocks above and below here
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy + 1, position.getZ() + dz));
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy - 1, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy + 1, playerPosition.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy - 1, playerPosition.getZ() + dz));
                                 break;
                             }
                             if (adx < 3 && adz < 3 && adx + adz > 0) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
-                                breakLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy + 2, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
+                                breakLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy + 2, playerPosition.getZ() + dz));
                                 break;
                             }
                             if (adz == 0 ^ adx == 0) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
-                                breakLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy + 2, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
+                                breakLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy + 2, playerPosition.getZ() + dz));
                                 break;
                             }
                             if (adz * adx == 2 * maxRange) { // expecting one to be 2, and one to be maxRange (e.g. 5)
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
-                                breakLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy + 2, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
+                                breakLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy + 2, playerPosition.getZ() + dz));
                                 break;
                             }
                             if (adz + adx == 6) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 if ((adx == maxRange) ^ (adz == maxRange)) {
-                                    breakLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy + 2, position.getZ() + dz));
+                                    breakLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy + 2, playerPosition.getZ() + dz));
                                 }
                                 break;
                             }
@@ -623,7 +610,7 @@ public class Stage {
                         }
                         case -1: {
                             if (adx + adz == 7 || adx + adz == 0) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
                             break;
@@ -631,7 +618,7 @@ public class Stage {
                         case 0: {
                             int check = adx + adz;
                             if ((check == 8 || check == 6) && adx * adz > 5) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
                             break;
@@ -639,19 +626,19 @@ public class Stage {
                         case 1: {
                             int addl1 = adx + adz;
                             if (addl1 == 7 || addl1 == 3 || addl1 == 2) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
                             if ((adx == maxRange) ^ (adz == maxRange) && addl1 < 7) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
                             if (addl1 == 4 && adx * adz != 0) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
                             if (adx + adz < 7) {
-                                breakLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                breakLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
                             break;
@@ -662,33 +649,33 @@ public class Stage {
                                 break;
                             }
                             if (addl2 == 8 || addl2 == 6 || addl2 == 5 || addl2 == 1) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
                             if ((addl2 == 4) && (adx == 0 ^ adz == 0)) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
                             if (addl2 == 0) {
-                                breakLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                breakLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
                             break;
                         }
                         case 3: {
                             if (adx * adz == 12 || adx + adz == 0) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
                             if ((adx == maxRange) ^ (adz == maxRange) && ((adx < 2) ^ (adz < 2))) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
                             if (adx > 3 || adz > 3) { // don't allow any more checks past 3 blocks out
                                 break;
                             }
                             if (adx + adz > 1 && adx + adz < 5) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
                             break;
@@ -698,12 +685,12 @@ public class Stage {
                                 break;
                             }
                             if (adx + adz == 4 && adx * adz == 0) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
                             int addl4 = adx + adz;
                             if (addl4 == 1 || addl4 == 5 || addl4 == 6) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
                             break;
@@ -714,14 +701,14 @@ public class Stage {
                             }
                             int addl5 = adx + adz;
                             if (addl5 > 1 && addl5 < 5) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
                             break;
                         }
                         case 6: {
                             if (adx + adz < 2) {
-                                noteblockLocations.add(new BlockPos(position.getX() + dx, position.getY() + dy, position.getZ() + dz));
+                                noteblockLocations.add(new BlockPos(playerPosition.getX() + dx, playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
                             break;
@@ -742,7 +729,7 @@ public class Stage {
         for (int dx = -5; dx <= 5; dx++) {
             for (int dz = -5; dz <= 5; dz++) {
                 for (int dy : new int[]{-1, 0, 1, 2, -2, 3, -3, 4, -4, 5, 6}) {
-                    BlockPos bp = position.add(dx, dy, dz);
+                    BlockPos bp = playerPosition.add(dx, dy, dz);
                     BlockState bs = NoteblockPlayer.mc.world.getBlockState(bp);
                     BlockState aboveBs = NoteblockPlayer.mc.world.getBlockState(bp.up());
                     int blockId = Block.getRawIdFromState(bs);
@@ -802,6 +789,6 @@ public class Stage {
     }
 
     public Vec3d getOriginBottomCenter() {
-        return Vec3d.ofBottomCenter(position);
+        return Vec3d.ofBottomCenter(playerPosition);
     }
 }

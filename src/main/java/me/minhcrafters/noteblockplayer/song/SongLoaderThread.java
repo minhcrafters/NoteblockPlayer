@@ -8,6 +8,7 @@ import me.minhcrafters.noteblockplayer.conversion.NBSConverter;
 import me.minhcrafters.noteblockplayer.conversion.TxtConverter;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,7 +16,6 @@ import java.nio.file.Paths;
 
 public class SongLoaderThread extends Thread {
 
-    private String location;
     private Path songPath;
     private URL songUrl;
     public Exception exception;
@@ -28,11 +28,10 @@ public class SongLoaderThread extends Thread {
     }
 
     public SongLoaderThread(String location) throws IOException {
-        NoteblockPlayer.addChatMessage("Loading song from " + location);
-        this.location = location;
+        // NoteblockPlayer.addChatMessage("Loading song from " + location);
         if (location.startsWith("http://") || location.startsWith("https://")) {
             isUrl = true;
-            songUrl = new URL(location);
+            songUrl = URI.create(location).toURL();
         } else if (Files.exists(getSongFile(location))) {
             songPath = getSongFile(location);
         } else if (Files.exists(getSongFile(location + ".mid"))) {
@@ -54,26 +53,23 @@ public class SongLoaderThread extends Thread {
         try {
             byte[] bytes;
             if (isUrl) {
-                bytes = DownloadUtils.DownloadToByteArray(songUrl, 10 * 1024 * 1024);
+                bytes = DownloadUtils.downloadToByteArray(songUrl, 10 * 1024 * 1024);
                 filename = Paths.get(songUrl.toURI().getPath()).getFileName().toString();
             } else {
-                bytes = Files.readAllBytes(songPath);
+                bytes = Files.readAllBytes(this.songPath);
                 filename = songPath.getFileName().toString();
             }
 
-            // Keep track of specific conversion errors
-            Exception error = null;
-
             try {
                 if (filename.endsWith(".mid") || filename.endsWith(".midi")) {
-                    song = MIDIConverter.getSongFromBytes(bytes, filename);
+                    song = MIDIConverter.getSongFromFile(this.songPath);
                 } else if (filename.endsWith(".nbs")) {
                     song = NBSConverter.getSongFromBytes(bytes, filename);
                 } else if (filename.endsWith(".txt")) {
                     song = TxtConverter.getSongFromBytes(bytes, filename);
                 }
             } catch (Exception e) {
-                throw new IOException(e.getMessage());
+                throw new IOException("Invalid song format (must be either MIDI, NBS, or TXT)");
             }
 
 //            if (song == null) {

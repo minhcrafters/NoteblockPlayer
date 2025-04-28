@@ -31,7 +31,7 @@ public class DownloadUtils {
         }
     }
 
-    public static byte[] DownloadToByteArray(URL url, int maxSize) throws IOException, KeyManagementException, NoSuchAlgorithmException {
+    public static byte[] downloadToByteArray(URL url, int maxSize) throws IOException, KeyManagementException, NoSuchAlgorithmException {
         SSLContext ctx = SSLContext.getInstance("TLS");
         ctx.init(new KeyManager[0], new TrustManager[]{new DefaultTrustManager()}, new SecureRandom());
         SSLContext.setDefault(ctx);
@@ -61,6 +61,6 @@ public class DownloadUtils {
     }
 
     public static InputStream DownloadToInputStream(URL url, int maxSize) throws KeyManagementException, NoSuchAlgorithmException, IOException {
-        return new ByteArrayInputStream(DownloadToByteArray(url, maxSize));
+        return new ByteArrayInputStream(downloadToByteArray(url, maxSize));
     }
 }

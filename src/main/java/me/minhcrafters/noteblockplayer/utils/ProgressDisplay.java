@@ -147,7 +147,7 @@ public class ProgressDisplay {
         int textWidth = Math.max(Math.max(headerWidth, songNameWidth + 10), durationWidth);
 
         int padding = 4;
-        int progressBarHeight = 4;
+        int progressBarHeight = 8;
         int spacing = 2;
 
         int boxWidth = textWidth + padding * 2;

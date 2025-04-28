@@ -6,18 +6,15 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import me.minhcrafters.noteblockplayer.NoteblockPlayer;
 import me.minhcrafters.noteblockplayer.command.commands.*;
 import me.minhcrafters.noteblockplayer.command.commands.Queue;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.command.CommandRegistryAccess;
-import net.minecraft.command.CommandSource;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.Text;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 public class CommandManager {
     public static ArrayList<Command> commands = new ArrayList<>();

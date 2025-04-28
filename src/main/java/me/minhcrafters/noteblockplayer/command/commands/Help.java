@@ -6,12 +6,11 @@ import me.minhcrafters.noteblockplayer.command.Command;
 import me.minhcrafters.noteblockplayer.command.CommandManager;
 import me.minhcrafters.noteblockplayer.NoteblockPlayer;
 import net.minecraft.command.CommandSource;
-import net.minecraft.text.ClickEvent;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
+import net.minecraft.text.*;
 import net.minecraft.util.Formatting;
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 
@@ -54,29 +53,56 @@ public class Help extends Command {
                 return true;
             }
             // Build header and commands for this page
+
+            if (pageNumber > 1) {
+                for (int i = 0; i < PAGE_SIZE + 2; i++) {
+                    NoteblockPlayer.addChatMessage("");
+                }
+            }
+
             NoteblockPlayer.addChatMessage("§6---------- Commands (Page " + pageNumber + "/" + totalPages + ") ----------");
             int startIndex = (pageNumber - 1) * PAGE_SIZE;
             int endIndex = Math.min(startIndex + PAGE_SIZE, totalCommands);
             for (int i = startIndex; i < endIndex; i++) {
                 Command c = CommandManager.commands.get(i);
-                NoteblockPlayer.addChatMessage("§3" + "/" + CommandManager.COMMAND_ROOT + " " + c.getName() + " §7 - " + c.getDescription());
+
+                NoteblockPlayer.addChatMessage(Text.literal("§3/" + CommandManager.COMMAND_ROOT + " " + c.getName())
+                        .setStyle(Style.EMPTY
+                                .withColor(Formatting.AQUA)
+                                .withBold(true)
+                                .withHoverEvent(
+                                        new HoverEvent(
+                                                HoverEvent.Action.SHOW_TEXT,
+                                                Text.literal(String.format("%s\n\nClick to run command", c.getDescription()))
+                                        )
+                                )
+                                .withClickEvent(
+                                        new ClickEvent(
+                                                ClickEvent.Action.SUGGEST_COMMAND,
+                                                "/" + CommandManager.COMMAND_ROOT + " " + c.getName()
+                                        )
+                                )
+                        )
+                );
             }
             // Build navigation with clickable components if available
-            StringBuilder nav = new StringBuilder();
+            MutableText navText = Text.empty();
+
             if (pageNumber > 1) {
-                String prevCommand = "/" + CommandManager.COMMAND_ROOT + " " + "help " + (pageNumber - 1);
-                nav.append(createClickableComponent("[Prev]", prevCommand));
+                String prevCommand = "/" + CommandManager.COMMAND_ROOT + " help " + (pageNumber - 1);
+                navText.append(createClickableComponent("[Prev]", prevCommand)).append("  ");
             } else {
-                nav.append("§7[Prev]");
+                navText.append(Text.literal("§7[Prev]")).append("  ");
             }
-            nav.append("  ");
+
             if (pageNumber < totalPages) {
-                String nextCommand = "/" + CommandManager.COMMAND_ROOT + " " + "help " + (pageNumber + 1);
-                nav.append(createClickableComponent("[Next]", nextCommand));
+                String nextCommand = "/" + CommandManager.COMMAND_ROOT + " help " + (pageNumber + 1);
+                navText.append(createClickableComponent("[Next]", nextCommand));
             } else {
-                nav.append("§7[Next]");
+                navText.append(Text.literal("§7[Next]"));
             }
-            NoteblockPlayer.addChatMessage(nav.toString());
+
+            NoteblockPlayer.addChatMessage(navText);
         } else {
             // If the argument is not numeric, treat it as a command name for detailed help
             String commandName = args.toLowerCase(Locale.ROOT);
@@ -111,12 +137,21 @@ public class Help extends Command {
      * When clicked, the command specified in "command" will be run.
      */
     private MutableText createClickableComponent(String display, String command) {
+        return createClickableComponent(Text.literal(display), Text.empty(), command);
+    }
+
+    /**
+     * Creates a clickable JSON text component.
+     * When clicked, the command specified in "command" will be run.
+     */
+    private MutableText createClickableComponent(MutableText display, Text description, String command) {
         Style clickableStyle = Style.EMPTY
                 .withColor(Formatting.AQUA)
                 .withBold(true)
+                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, description))
                 .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command));
 
-        return Text.literal(display).setStyle(clickableStyle);
+        return display.setStyle(clickableStyle);
     }
 
     /**

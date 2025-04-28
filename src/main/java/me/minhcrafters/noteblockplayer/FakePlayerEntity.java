@@ -51,7 +51,7 @@ public class FakePlayerEntity extends OtherClientPlayerEntity {
     public void copyStagePosAndPlayerLook() {
         Stage lastStage = SongHandler.getInstance().lastStage;
         if (lastStage != null) {
-            refreshPositionAndAngles(lastStage.position.getX() + 0.5, lastStage.position.getY(), lastStage.position.getZ() + 0.5, player.getYaw(), player.getPitch());
+            refreshPositionAndAngles(lastStage.playerPosition.getX() + 0.5, lastStage.playerPosition.getY(), lastStage.playerPosition.getZ() + 0.5, player.getYaw(), player.getPitch());
             headYaw = player.headYaw;
         } else {
             copyPositionAndRotation(player);

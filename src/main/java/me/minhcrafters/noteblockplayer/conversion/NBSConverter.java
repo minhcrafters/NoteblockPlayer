@@ -163,7 +163,7 @@ public class NBSConverter {
                 if (i < nbsLayers.size()) {
                     NBSLayer nbsLayer = nbsLayers.get(i);
                     layerVolume = nbsLayer.volume;
-                    layerStereo = nbsLayer.stereo;
+                    layerStereo = (byte) (nbsLayer.stereo - 100);
                 }
 
                 // Create a new Layer with song reference and settings
@@ -199,7 +199,7 @@ public class NBSConverter {
                                 noteId,
                                 getMilliTime(nbsNote.tick, tempo),
                                 nbsNote.velocity,
-                                nbsNote.panning
+                                nbsNote.panning - 100
                         );
 
                         layer.addNote(note);

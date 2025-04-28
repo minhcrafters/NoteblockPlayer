@@ -105,7 +105,7 @@ public class MIDIConverter {
                     switch (sm.getCommand()) {
                         case CONTROL_CHANGE:
                             if (sm.getData1() == PAN_CONTROLLER) {
-                                int newPanning = (sm.getData2() * 200) / 127;
+                                int newPanning = ((sm.getData2() * 200) / 127) - 100;
                                 panning[channel] = newPanning;
                                 layer.panning = newPanning;
                             }

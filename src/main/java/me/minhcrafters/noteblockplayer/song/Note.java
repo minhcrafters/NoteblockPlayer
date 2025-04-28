@@ -10,14 +10,14 @@ public class Note implements Comparable<Note> {
         this.noteId = note;
         this.time = time;
         this.velocity = 100;
-        this.panning = 100;
+        this.panning = 0;
     }
 
     public Note(int note, long time, int velocity) {
         this.noteId = note;
         this.time = time;
         this.velocity = velocity;
-        this.panning = 100;
+        this.panning = 0;
     }
 
     public Note(int note, long time, int velocity, int panning) {

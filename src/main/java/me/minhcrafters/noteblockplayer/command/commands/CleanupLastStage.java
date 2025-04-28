@@ -41,7 +41,7 @@ public class CleanupLastStage extends Command {
             if (mc.player.getPos().squaredDistanceTo(lastStage.getOriginBottomCenter()) > 3 * 3 || !lastStage.worldName.equals(Utils.getWorldName())) {
                 String coordStr = String.format(
                         "%d %d %d",
-                        lastStage.position.getX(), lastStage.position.getY(), lastStage.position.getZ()
+                        lastStage.playerPosition.getX(), lastStage.playerPosition.getY(), lastStage.playerPosition.getZ()
                 );
                 NoteblockPlayer.addChatMessage("§6You must be within §33 §6blocks of the center of your stage to start cleanup.");
                 MutableText coordText = Utils.joinTexts(null,

@@ -42,7 +42,7 @@ public class Songs extends Command {
     public boolean processCommand(String args) {
         if (!args.contains(" ")) {
             Path dir;
-            if (args.length() == 0) {
+            if (args.isEmpty()) {
                 dir = NoteblockPlayer.SONGS_DIR;
             } else {
                 dir = NoteblockPlayer.SONGS_DIR.resolve(args);
@@ -78,9 +78,9 @@ public class Songs extends Command {
                     Text songText = createClickableText(songName, "/" + CommandManager.COMMAND_ROOT + " play " + relativePath);
 
                     // Combine with the path information
-                    Text fullText = Text.literal("")
+                    Text fullText = Text.empty()
                             .append(songText);
-                            // .append(Text.literal(" §7(" + relativePath + ")"));
+                    // .append(Text.literal(" §7(" + relativePath + ")"));
 
                     // Send the combined message
                     NoteblockPlayer.addChatMessage(fullText);

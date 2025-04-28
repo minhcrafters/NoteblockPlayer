@@ -65,12 +65,12 @@ public class SongHandler {
             if (currentSong == null && currentPlaylist != null && currentPlaylist.loaded) {
                 if (!playlistChecked) {
                     playlistChecked = true;
-                    if (currentPlaylist.songsFailedToLoad.size() > 0) {
+                    if (!currentPlaylist.songsFailedToLoad.isEmpty()) {
                         NoteblockPlayer.addChatMessage("§cFailed to load the following songs from the playlist: §4" + String.join(" ", currentPlaylist.songsFailedToLoad));
                     }
                 }
                 Song nextSong = currentPlaylist.getNext();
-                if (currentPlaylist.songs.size() == 0) {
+                if (currentPlaylist.songs.isEmpty()) {
                     NoteblockPlayer.addChatMessage("§cPlaylist has no playable songs");
                     currentPlaylist = null;
                 } else if (nextSong == null) {
@@ -83,22 +83,24 @@ public class SongHandler {
             }
 
             // Check queue and load song from it if necessary
-            if (currentSong == null && currentPlaylist == null && songQueue.size() > 0) {
+            if (currentSong == null && currentPlaylist == null && !songQueue.isEmpty()) {
                 setSong(songQueue.poll());
             }
 
             // Check if loader thread is finished and handle accordingly
-            if (loaderThread != null && !loaderThread.isAlive()) {
+            if (loaderThread != null) {
                 if (loaderThread.exception != null) {
                     NoteblockPlayer.addChatMessage("§cFailed to load song: §4" + loaderThread.exception.getMessage());
                 } else {
-                    if (currentSong == null) {
-                        setSong(loaderThread.song);
-                    } else {
-                        queueSong(loaderThread.song);
+                    NoteblockPlayer.addChatMessage(String.valueOf(loaderThread.song != null));
+                    if (loaderThread.song != null) {
+                        if (currentSong == null) {
+                            setSong(loaderThread.song);
+                        } else {
+                            queueSong(loaderThread.song);
+                        }
                     }
                 }
-                loaderThread = null;
             }
         }
 
@@ -176,10 +178,8 @@ public class SongHandler {
                 NoteblockPlayer.addChatMessage("§6Loading §3" + location);
                 loaderThread.start();
                 loaderThread.join();
-            } catch (IOException e) {
+            } catch (IOException | InterruptedException e) {
                 NoteblockPlayer.addChatMessage("§cFailed to load song: §4" + e.getMessage());
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
             }
         }
     }
@@ -196,9 +196,14 @@ public class SongHandler {
 
     // Sets currentSong and sets everything up for building
     public void setSong(Song song) {
+        partialReset();
+
         dirty = true;
         currentSong = song;
         building = true;
+
+        loaderThread = null;
+
         if (!NoteblockPlayer.getConfig().survivalOnly) setCreativeIfNeeded();
         if (NoteblockPlayer.getConfig().doAnnouncement) {
             sendMessage(NoteblockPlayer.getConfig().announcementMessage.replaceAll("\\[name]", song.name));
@@ -206,11 +211,16 @@ public class SongHandler {
         if (!NoteblockPlayer.getConfig().survivalOnly) getAndSaveBuildSlot();
         prepareStage();
         NoteblockPlayer.addChatMessage("§6Building noteblocks");
+        NoteblockPlayer.addChatMessage(String.valueOf(currentSong != null));
+        NoteblockPlayer.addChatMessage(String.valueOf(building));
+        NoteblockPlayer.addChatMessage(String.valueOf(cleaningUp));
+        NoteblockPlayer.addChatMessage(String.valueOf(dirty));
     }
 
     private void queueSong(Song song) {
         songQueue.add(song);
         NoteblockPlayer.addChatMessage("§6Added song to queue: §3" + song.name);
+        loaderThread = null;
     }
 
     public void setPlaylist(Path playlist) {
@@ -250,6 +260,7 @@ public class SongHandler {
     private ItemStack prevHeldItem = null;
 
     private void handleBuilding() {
+        // NoteblockPlayer.addChatMessage("handleBuilding called");
         setBuildProgressDisplay();
         if (buildStartDelay > 0) {
             buildStartDelay--;
@@ -283,6 +294,7 @@ public class SongHandler {
 
         if (stage.nothingToBuild()) { // If there's still nothing to build after checking build status, switch to playing
             building = false;
+
             if (!NoteblockPlayer.getConfig().survivalOnly) {
                 setSurvivalIfNeeded();
                 restoreBuildSlot();
@@ -290,39 +302,36 @@ public class SongHandler {
 
             stage.sendMovementPacketToStagePosition();
 
-            if (NoteblockPlayer.mc.getServer() != null && !NoteblockPlayer.mc.getServer().isDedicated()) {
-                double songDuration = currentSong.length / 1000.0;
-                int totalNotes = currentSong.getTotalNotes().size();
+            double songDuration = currentSong.length / 1000.0;
+            int totalNotes = currentSong.getTotalNotes().size();
 
-                // Find maximum notes per second (by analyzing 1-second windows)
-                int maxNotesPerSecond = 0;
-                int j = 0;
-                int notesInSecond = 0;
-                
-                for (int i = 0; i < currentSong.getTotalNotes().size(); i++) {
-                    notesInSecond++;
-                    while (j < i && 
-                           currentSong.getTotalNotes().get(j).time + 1000 < currentSong.getTotalNotes().get(i).time) {
-                        j++;
-                        notesInSecond--;
-                    }
-                    maxNotesPerSecond = Math.max(notesInSecond, maxNotesPerSecond);
+            NoteblockPlayer.addChatMessage(songDuration + " " + totalNotes);
+
+            // Find maximum notes per second (by analyzing 1-second windows)
+            int maxNotesPerSecond = 0;
+            int j = 0;
+            int notesInSecond = 0;
+
+            for (int i = 0; i < currentSong.getTotalNotes().size(); i++) {
+                notesInSecond++;
+                while (j < i &&
+                        currentSong.getTotalNotes().get(j).time + 1000 < currentSong.getTotalNotes().get(i).time) {
+                    j++;
+                    notesInSecond--;
                 }
-                
-                // Also calculate average notes per second for comparison
-                double avgNotesPerSecond = totalNotes / songDuration;
-                
-                // Use maximum notes per second for tick rate calculation with a balanced approach
-                double tickRate = Math.max(20, 20 + maxNotesPerSecond + avgNotesPerSecond);
-                
-                NoteblockPlayer.addChatMessage(String.format("§6Song stats: §3Max: %d nps §7| §3Avg: %.1f nps §7| §3Tick rate: %.1f",
-                        maxNotesPerSecond, avgNotesPerSecond, tickRate));
-                
-                NoteblockPlayer.mc.getServer().getCommandManager().executeWithPrefix(
-                        NoteblockPlayer.mc.getServer().getCommandSource(),
-                        "/tick rate " + tickRate
-                );
+                maxNotesPerSecond = Math.max(notesInSecond, maxNotesPerSecond);
             }
+
+            // Also calculate average notes per second for comparison
+            double avgNotesPerSecond = totalNotes / songDuration;
+
+            // Use maximum notes per second for tick rate calculation with a balanced approach
+            double tickRate = Math.max(20, 20 + maxNotesPerSecond + avgNotesPerSecond);
+
+            NoteblockPlayer.addChatMessage(String.format("§6Song stats: §3Max: %d nps §7| §3Avg: %.1f nps §7| §3Tick rate: %.1f",
+                    maxNotesPerSecond, avgNotesPerSecond, tickRate));
+
+            NoteblockPlayer.mc.getNetworkHandler().sendCommand("tick rate " + tickRate);
 
             NoteblockPlayer.addChatMessage("§6Now playing §3" + currentSong.name);
         }
@@ -621,12 +630,12 @@ public class SongHandler {
                 }
             }
             // Then sort by distance
-            int a_dx = a.getX() - lastStage.position.getX();
-            int a_dy = a.getY() - lastStage.position.getY();
-            int a_dz = a.getZ() - lastStage.position.getZ();
-            int b_dx = b.getX() - lastStage.position.getX();
-            int b_dy = b.getY() - lastStage.position.getY();
-            int b_dz = b.getZ() - lastStage.position.getZ();
+            int a_dx = a.getX() - lastStage.playerPosition.getX();
+            int a_dy = a.getY() - lastStage.playerPosition.getY();
+            int a_dz = a.getZ() - lastStage.playerPosition.getZ();
+            int b_dx = b.getX() - lastStage.playerPosition.getX();
+            int b_dy = b.getY() - lastStage.playerPosition.getY();
+            int b_dz = b.getZ() - lastStage.playerPosition.getZ();
             int a_dist = a_dx * a_dx + a_dy * a_dy + a_dz * a_dz;
             int b_dist = b_dx * b_dx + b_dy * b_dy + b_dz * b_dz;
             if (a_dist < b_dist) {
@@ -658,12 +667,12 @@ public class SongHandler {
                 }
             }
             // Then sort by distance
-            int a_dx = a.getX() - lastStage.position.getX();
-            int a_dy = a.getY() - lastStage.position.getY();
-            int a_dz = a.getZ() - lastStage.position.getZ();
-            int b_dx = b.getX() - lastStage.position.getX();
-            int b_dy = b.getY() - lastStage.position.getY();
-            int b_dz = b.getZ() - lastStage.position.getZ();
+            int a_dx = a.getX() - lastStage.playerPosition.getX();
+            int a_dy = a.getY() - lastStage.playerPosition.getY();
+            int a_dz = a.getZ() - lastStage.playerPosition.getZ();
+            int b_dx = b.getX() - lastStage.playerPosition.getX();
+            int b_dy = b.getY() - lastStage.playerPosition.getY();
+            int b_dz = b.getZ() - lastStage.playerPosition.getZ();
             int a_dist = a_dx * a_dx + a_dy * a_dy + a_dz * a_dz;
             int b_dist = b_dx * b_dx + b_dy * b_dy + b_dz * b_dz;
             if (a_dist < b_dist) {
@@ -681,7 +690,7 @@ public class SongHandler {
         cleanupTotalBlocksToPlace = cleanupPlaceList.size();
 
         boolean noNecessaryBreaks = cleanupBreakList.stream().allMatch(bp -> world.getBlockState(bp).getBlock().getDefaultState().equals(originalBlocks.get(bp).getBlock().getDefaultState()));
-        boolean noNecessaryPlacements = cleanupPlaceList.stream().allMatch(bp -> bp.equals(lastStage.position) || bp.equals(lastStage.position.up()) || world.getBlockState(bp).getBlock().getDefaultState().equals(originalBlocks.get(bp).getBlock().getDefaultState()));
+        boolean noNecessaryPlacements = cleanupPlaceList.stream().allMatch(bp -> bp.equals(lastStage.playerPosition) || bp.equals(lastStage.playerPosition.up()) || world.getBlockState(bp).getBlock().getDefaultState().equals(originalBlocks.get(bp).getBlock().getDefaultState()));
         if (noNecessaryBreaks && noNecessaryPlacements) {
             cleanupUnplaceableBlocks.addAll(cleanupPlaceList);
             cleanupPlaceList.clear();
@@ -722,6 +731,13 @@ public class SongHandler {
         dirty = false;
     }
 
+    public void partialReset() {
+        currentSong = null;
+        building = false;
+        cleaningUp = false;
+        dirty = false;
+    }
+
     public void restoreStateAndReset() {
         restoreStateAndReset(true);
     }
@@ -747,12 +763,13 @@ public class SongHandler {
 
         reset();
 
-        if (NoteblockPlayer.mc.getServer() != null && !NoteblockPlayer.mc.getServer().isDedicated()) {
-            NoteblockPlayer.mc.getServer().getCommandManager().executeWithPrefix(
-                    NoteblockPlayer.mc.getServer().getCommandSource(),
-                    "/tick rate 20"
-            );
-        }
+//        if (NoteblockPlayer.mc.getServer() != null && !NoteblockPlayer.mc.getServer().isDedicated()) {
+//            NoteblockPlayer.mc.getServer().getCommandManager().executeWithPrefix(
+//                    NoteblockPlayer.mc.getServer().getCommandSource(),
+//                    "/tick rate 20"
+//            );
+//        }
+        NoteblockPlayer.mc.getNetworkHandler().sendCommand("tick rate 20");
     }
 
     public void partialResetAndCleanup() {
@@ -864,9 +881,9 @@ public class SongHandler {
     }
 
     private void placeBlock(BlockPos bp) {
-        double fx = Math.max(0.0, Math.min(1.0, (lastStage.position.getX() + 0.5 - bp.getX())));
-        double fy = Math.max(0.0, Math.min(1.0, (lastStage.position.getY() + 0.0 - bp.getY())));
-        double fz = Math.max(0.0, Math.min(1.0, (lastStage.position.getZ() + 0.5 - bp.getZ())));
+        double fx = Math.max(0.0, Math.min(1.0, (lastStage.playerPosition.getX() + 0.5 - bp.getX())));
+        double fy = Math.max(0.0, Math.min(1.0, (lastStage.playerPosition.getY() + 0.0 - bp.getY())));
+        double fz = Math.max(0.0, Math.min(1.0, (lastStage.playerPosition.getZ() + 0.5 - bp.getZ())));
         fx += bp.getX();
         fy += bp.getY();
         fz += bp.getZ();
@@ -924,9 +941,9 @@ public class SongHandler {
 
     private void doRotateIfNeeded(double lookX, double lookY, double lookZ) {
         if (NoteblockPlayer.getConfig().rotate) {
-            double d = lookX - (lastStage.position.getX() + 0.5);
-            double e = lookY - (lastStage.position.getY() + NoteblockPlayer.mc.player.getStandingEyeHeight());
-            double f = lookZ - (lastStage.position.getZ() + 0.5);
+            double d = lookX - (lastStage.playerPosition.getX() + 0.5);
+            double e = lookY - (lastStage.playerPosition.getY() + NoteblockPlayer.mc.player.getStandingEyeHeight());
+            double f = lookZ - (lastStage.playerPosition.getZ() + 0.5);
             double g = Math.sqrt(d * d + f * f);
             float pitch = MathHelper.wrapDegrees((float) (-(MathHelper.atan2(e, g) * 57.2957763671875)));
             float yaw = MathHelper.wrapDegrees((float) (MathHelper.atan2(f, d) * 57.2957763671875) - 90.0f);
@@ -935,7 +952,7 @@ public class SongHandler {
                 NoteblockPlayer.fakePlayer.setYaw(yaw);
                 NoteblockPlayer.fakePlayer.setHeadYaw(yaw);
             }
-            NoteblockPlayer.mc.player.networkHandler.getConnection().send(new PlayerMoveC2SPacket.Full(lastStage.position.getX() + 0.5, lastStage.position.getY(), lastStage.position.getZ() + 0.5, yaw, pitch, true, false));
+            NoteblockPlayer.mc.player.networkHandler.getConnection().send(new PlayerMoveC2SPacket.Full(lastStage.playerPosition.getX() + 0.5, lastStage.playerPosition.getY(), lastStage.playerPosition.getZ() + 0.5, yaw, pitch, true, false));
         }
     }
 

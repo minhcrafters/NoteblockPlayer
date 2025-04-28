@@ -35,7 +35,7 @@ public class Utils {
     private static void findAllSongPaths(Path rootDir, String relativePath, List<String> resultList) {
         try {
             Stream<Path> entries = Files.list(rootDir);
-            for (Path entry : entries.collect(Collectors.toList())) {
+            for (Path entry : entries.toList()) {
                 String relPath = relativePath.isEmpty() ? 
                     entry.getFileName().toString() : 
                     relativePath + entry.getFileName().toString();
@@ -100,7 +100,7 @@ public class Utils {
                 // If we have a partial filename, show matches from current directory
                 try {
                     Stream<Path> songFiles = Files.list(dir);
-                    for (Path path : songFiles.collect(Collectors.toList())) {
+                    for (Path path : songFiles.toList()) {
                         String fileName = path.getFileName().toString();
                         
                         // Check if this file/directory matches our partial input

@@ -30,6 +30,8 @@ public class Play extends Command {
                 return true;
             }
 
+            NoteblockPlayer.addChatMessage(args);
+
             SongHandler.getInstance().loadSong(args);
             return true;
         } else {

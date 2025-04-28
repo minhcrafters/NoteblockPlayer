@@ -36,7 +36,7 @@ public class ClientCommonNetworkHandlerMixin {
             if (lastStage != null) {
                 if (!NoteblockPlayer.getConfig().rotate) {
                     connection.send(new PlayerMoveC2SPacket.Full(
-                            lastStage.position.getX() + 0.5, lastStage.position.getY(), lastStage.position.getZ() + 0.5,
+                            lastStage.playerPosition.getX() + 0.5, lastStage.playerPosition.getY(), lastStage.playerPosition.getZ() + 0.5,
                             NoteblockPlayer.mc.player.getYaw(), NoteblockPlayer.mc.player.getPitch(),
                             true, false));
                     if (NoteblockPlayer.fakePlayer != null) {
