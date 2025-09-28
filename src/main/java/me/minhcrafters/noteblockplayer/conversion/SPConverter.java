@@ -14,11 +14,12 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 public class SPConverter {
-    public static final byte[] FILE_TYPE_SIGNATURE = {-53, 123, -51, -124, -122, -46, -35, 38};
+    public static final byte[] FILE_TYPE_SIGNATURE = { -53, 123, -51, -124, -122, -46, -35, 38 };
     public static final long MAX_UNCOMPRESSED_SIZE = 50 * 1024 * 1024;
 
     public static Song getSongFromBytes(byte[] bytes, String fileName) throws IOException {
-        InputStream is = new FileUtils.LimitedSizeInputStream(new GZIPInputStream(new ByteArrayInputStream(bytes)), MAX_UNCOMPRESSED_SIZE);
+        InputStream is = new FileUtils.LimitedSizeInputStream(new GZIPInputStream(new ByteArrayInputStream(bytes)),
+                MAX_UNCOMPRESSED_SIZE);
         bytes = is.readAllBytes();
         is.close();
 
@@ -90,7 +91,7 @@ public class SPConverter {
                 writeVarLong(os, note.time - prevTime);
                 prevTime = note.time;
             }
-        
+
         writeShort(os, 0xFFFF);
 
         os.close();

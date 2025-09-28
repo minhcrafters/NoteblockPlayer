@@ -15,11 +15,11 @@ public class ToggleMovement extends Command {
     }
 
     public String[] getAliases() {
-        return new String[]{"movement"};
+        return new String[] { "movement" };
     }
 
     public String[] getSyntax() {
-        return new String[]{"<swing | rotate>"};
+        return new String[] { "<swing | rotate>" };
     }
 
     public String getDescription() {
@@ -35,7 +35,7 @@ public class ToggleMovement extends Command {
                 } else {
                     NoteblockPlayer.addChatMessage("§6Disabled arm swinging");
                 }
-                
+
                 return true;
             case "rotate":
                 NoteblockPlayer.getConfig().rotate = !NoteblockPlayer.getConfig().rotate;
@@ -44,7 +44,7 @@ public class ToggleMovement extends Command {
                 } else {
                     NoteblockPlayer.addChatMessage("§6Disabled player rotation");
                 }
-                
+
                 return true;
             default:
                 return false;
@@ -53,7 +53,7 @@ public class ToggleMovement extends Command {
 
     public CompletableFuture<Suggestions> getSuggestions(String args, SuggestionsBuilder suggestionsBuilder) {
         if (!args.contains(" ")) {
-            return CommandSource.suggestMatching(new String[]{"swing", "rotate"}, suggestionsBuilder);
+            return CommandSource.suggestMatching(new String[] { "swing", "rotate" }, suggestionsBuilder);
         } else {
             return null;
         }

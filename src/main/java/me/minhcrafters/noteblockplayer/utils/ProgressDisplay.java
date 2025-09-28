@@ -36,11 +36,14 @@ public class ProgressDisplay {
     }
 
     /**
-     * Set the song name (topText) and additional text (bottomText) for further details.
+     * Set the song name (topText) and additional text (bottomText) for further
+     * details.
      * Note: currentTick is reset, and fade is restarted.
      */
-    public void setText(MutableText headerText, MutableText songName, MutableText songAuthor, MutableText durationText, int fade) {
-        if (headerText != null) this.headerText = headerText;
+    public void setText(MutableText headerText, MutableText songName, MutableText songAuthor, MutableText durationText,
+            int fade) {
+        if (headerText != null)
+            this.headerText = headerText;
         this.topText = songName;
         this.bottomText = songAuthor;
         this.durationText = durationText;
@@ -66,7 +69,8 @@ public class ProgressDisplay {
         int barWidth = 100;
         int barHeight = 10;
         int barX = (scaledWidth - barWidth) / 2;
-        int barY = boxY + 20; // Adjust this value to change the vertical position of the progress bar within the box
+        int barY = boxY + 20; // Adjust this value to change the vertical position of the progress bar within
+                              // the box
 
         // Draw the progress bar fill
         int progressWidth = (int) (((float) currentTick / totalTicks) * barWidth);
@@ -74,13 +78,13 @@ public class ProgressDisplay {
         // Draw the progress bar border
         int borderColor = 0xFFCCCCCC;
 
-//        if (!NoteblockPlayer.mc.interactionManager.hasStatusBars()) {
-//            barY += 14;
-//        }
-//
-//        if (heldItemTooltipFade > 0) {
-//            barY -= 12;
-//        }
+        // if (!NoteblockPlayer.mc.interactionManager.hasStatusBars()) {
+        // barY += 14;
+        // }
+        //
+        // if (heldItemTooltipFade > 0) {
+        // barY -= 12;
+        // }
 
         if (!NoteblockPlayer.mc.inGameHud.getBossBarHud().bossBars.isEmpty()) {
             barY -= 20;
@@ -103,7 +107,8 @@ public class ProgressDisplay {
         Objects.requireNonNull(NoteblockPlayer.mc.textRenderer);
 
         context.fill(barX - 1, barY - 1, barX + barWidth + 1, barY, borderColor + (opacity << 24));
-        context.fill(barX - 1, barY + barHeight, barX + barWidth + 1, barY + barHeight + 1, borderColor + (opacity << 24));
+        context.fill(barX - 1, barY + barHeight, barX + barWidth + 1, barY + barHeight + 1,
+                borderColor + (opacity << 24));
         context.fill(barX - 1, barY, barX, barY + barHeight, borderColor + (opacity << 24));
         context.fill(barX + barWidth, barY, barX + barWidth + 1, barY + barHeight, borderColor + (opacity << 24));
 
@@ -112,8 +117,10 @@ public class ProgressDisplay {
 
         context.fill(barX, barY, barX + progressWidth, barY + barHeight, 0xFF00BFFF + (opacity << 24));
 
-        context.drawCenteredTextWithShadow(NoteblockPlayer.mc.textRenderer, topText, scaledWidth / 2, textY, 16777215 + (opacity << 24));
-        context.drawCenteredTextWithShadow(NoteblockPlayer.mc.textRenderer, durationText, scaledWidth / 2, timeTextY, 16777215 + (opacity << 24));
+        context.drawCenteredTextWithShadow(NoteblockPlayer.mc.textRenderer, topText, scaledWidth / 2, textY,
+                16777215 + (opacity << 24));
+        context.drawCenteredTextWithShadow(NoteblockPlayer.mc.textRenderer, durationText, scaledWidth / 2, timeTextY,
+                16777215 + (opacity << 24));
 
         RenderSystem.disableBlend();
     }
@@ -127,7 +134,8 @@ public class ProgressDisplay {
         // --- Calculate Opacity ---
         int opacity = (int) ((float) this.fade * 256.0F / 10.0F);
         opacity = MathHelper.clamp(opacity, 0, 255); // Clamp opacity between 0 and 255
-        if (opacity <= 4) return; // Don't render if almost fully transparent
+        if (opacity <= 4)
+            return; // Don't render if almost fully transparent
 
         int alpha = opacity << 24; // Prepare alpha for color values
 
@@ -153,9 +161,10 @@ public class ProgressDisplay {
         int boxWidth = textWidth + padding * 2;
         boxWidth = Math.max(boxWidth, 100);
 
-        // Total height: header, song name, author, progress bar, duration, plus paddings and spaces
+        // Total height: header, song name, author, progress bar, duration, plus
+        // paddings and spaces
         int boxHeight = padding
-                + fontHeight        // header line
+                + fontHeight // header line
                 + spacing;
 
         boxHeight += (!Objects.equals(topText.toString(), "")) ? (fontHeight + spacing) : 0; // song name
@@ -163,13 +172,13 @@ public class ProgressDisplay {
 
         boxHeight += progressBarHeight + 1 // Progress bar
                 + spacing
-                + fontHeight        // duration
+                + fontHeight // duration
                 + padding;
 
         // --- Positions ---
         int boxX = (screenWidth - boxWidth) / 2;
-        int boxY = NoteblockPlayer.mc.inGameHud.getBossBarHud().bossBars.isEmpty() ?
-                10 : NoteblockPlayer.mc.inGameHud.getBossBarHud().bossBars.size() * 20;
+        int boxY = NoteblockPlayer.mc.inGameHud.getBossBarHud().bossBars.isEmpty() ? 10
+                : NoteblockPlayer.mc.inGameHud.getBossBarHud().bossBars.size() * 20;
 
         // Position for each text line
         int headerX = boxX + (boxWidth - headerWidth) / 2;
@@ -211,18 +220,20 @@ public class ProgressDisplay {
                 progressBarY - 1,
                 progressBarX + progressBarMaxWidth + 1,
                 progressBarY + progressBarHeight + 1,
-                borderColor + (opacity << 24)
-        );
+                borderColor + (opacity << 24));
 
-        context.fill(progressBarX, progressBarY, progressBarX + progressBarMaxWidth, progressBarY + progressBarHeight, fadedProgressBarBgColor);
-        context.fill(progressBarX, progressBarY, progressBarX + progressBarCurrentWidth, progressBarY + progressBarHeight, fadedProgressBarColor);
+        context.fill(progressBarX, progressBarY, progressBarX + progressBarMaxWidth, progressBarY + progressBarHeight,
+                fadedProgressBarBgColor);
+        context.fill(progressBarX, progressBarY, progressBarX + progressBarCurrentWidth,
+                progressBarY + progressBarHeight, fadedProgressBarColor);
 
         // --- Draw Text Lines ---
         int textColor = 0xFFFFFFFF; // White (ARGB)
         int fadedTextColor = (textColor & 0x00FFFFFF) | alpha;
         context.drawTextWithShadow(NoteblockPlayer.mc.textRenderer, headerToDisplay, headerX, headerY, fadedTextColor);
         context.drawTextWithShadow(NoteblockPlayer.mc.textRenderer, songNameText, songNameX, songNameY, fadedTextColor);
-        context.drawTextWithShadow(NoteblockPlayer.mc.textRenderer, authorNameText, authorNameX, authorNameY, fadedTextColor);
+        context.drawTextWithShadow(NoteblockPlayer.mc.textRenderer, authorNameText, authorNameX, authorNameY,
+                fadedTextColor);
         context.drawTextWithShadow(NoteblockPlayer.mc.textRenderer, durationText, durationX, durationY, fadedTextColor);
 
         RenderSystem.disableBlend();

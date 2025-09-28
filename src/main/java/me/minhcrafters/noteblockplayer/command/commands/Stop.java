@@ -26,7 +26,8 @@ public class Stop extends Command {
             if (SongHandler.getInstance().cleaningUp) {
                 SongHandler.getInstance().restoreStateAndReset();
                 NoteblockPlayer.addChatMessage("§6Stopped cleanup");
-            } else if (NoteblockPlayer.getConfig().autoCleanup && SongHandler.getInstance().originalBlocks.size() != 0) {
+            } else if (NoteblockPlayer.getConfig().autoCleanup
+                    && SongHandler.getInstance().originalBlocks.size() != 0) {
                 SongHandler.getInstance().partialResetAndCleanup();
                 NoteblockPlayer.addChatMessage("§6Stopped playing and switched to cleanup");
             } else {

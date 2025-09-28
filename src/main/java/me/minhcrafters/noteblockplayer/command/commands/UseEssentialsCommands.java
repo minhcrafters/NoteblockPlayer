@@ -9,7 +9,7 @@ public class UseEssentialsCommands extends Command {
     }
 
     public String[] getAliases() {
-        return new String[]{"essentials", "useEssentials", "essentialsCommands"};
+        return new String[] { "essentials", "useEssentials", "essentialsCommands" };
     }
 
     public String[] getSyntax() {
@@ -25,7 +25,7 @@ public class UseEssentialsCommands extends Command {
             NoteblockPlayer.getConfig().creativeCommand = "gmc";
             NoteblockPlayer.getConfig().survivalCommand = "gms";
             NoteblockPlayer.addChatMessage("§6Now using essentials gamemode commands");
-            
+
             return true;
         } else {
             return false;

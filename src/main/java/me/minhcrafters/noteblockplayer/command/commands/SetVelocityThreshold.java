@@ -9,11 +9,11 @@ public class SetVelocityThreshold extends Command {
     }
 
     public String[] getAliases() {
-        return new String[]{"velocityThreshold", "threshold"};
+        return new String[] { "velocityThreshold", "threshold" };
     }
 
     public String[] getSyntax() {
-        return new String[]{"<threshold>"};
+        return new String[] { "<threshold>" };
     }
 
     public String getDescription() {
@@ -30,7 +30,7 @@ public class SetVelocityThreshold extends Command {
                 }
                 NoteblockPlayer.getConfig().velocityThreshold = threshold;
                 NoteblockPlayer.addChatMessage("§6Set velocity threshold to " + threshold);
-                
+
                 return true;
             } catch (NumberFormatException e) {
                 return false;

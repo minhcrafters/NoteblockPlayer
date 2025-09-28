@@ -25,7 +25,7 @@ public class Help extends Command {
 
     @Override
     public String[] getSyntax() {
-        return new String[]{"[command|page]"};
+        return new String[] { "[command|page]" };
     }
 
     @Override
@@ -35,7 +35,8 @@ public class Help extends Command {
 
     @Override
     public boolean processCommand(String args) {
-        // if no args or the argument is numeric (indicating page number), show paginated commands
+        // if no args or the argument is numeric (indicating page number), show
+        // paginated commands
         if (args.isEmpty() || isNumeric(args.trim())) {
             int pageNumber = 1;
             if (!args.trim().isEmpty()) {
@@ -49,7 +50,8 @@ public class Help extends Command {
             int totalCommands = CommandManager.commands.size();
             int totalPages = (totalCommands + PAGE_SIZE - 1) / PAGE_SIZE;
             if (pageNumber < 1 || pageNumber > totalPages) {
-                NoteblockPlayer.addChatMessage("§cPage " + pageNumber + " does not exist. Valid pages: 1 - " + totalPages);
+                NoteblockPlayer
+                        .addChatMessage("§cPage " + pageNumber + " does not exist. Valid pages: 1 - " + totalPages);
                 return true;
             }
             // Build header and commands for this page
@@ -60,7 +62,8 @@ public class Help extends Command {
                 }
             }
 
-            NoteblockPlayer.addChatMessage("§6---------- Commands (Page " + pageNumber + "/" + totalPages + ") ----------");
+            NoteblockPlayer
+                    .addChatMessage("§6---------- Commands (Page " + pageNumber + "/" + totalPages + ") ----------");
             int startIndex = (pageNumber - 1) * PAGE_SIZE;
             int endIndex = Math.min(startIndex + PAGE_SIZE, totalCommands);
             for (int i = startIndex; i < endIndex; i++) {
@@ -73,17 +76,12 @@ public class Help extends Command {
                                 .withHoverEvent(
                                         new HoverEvent(
                                                 HoverEvent.Action.SHOW_TEXT,
-                                                Text.literal(String.format("%s\n\nClick to run command", c.getDescription()))
-                                        )
-                                )
+                                                Text.literal(String.format("%s\n\nClick to run command",
+                                                        c.getDescription()))))
                                 .withClickEvent(
                                         new ClickEvent(
                                                 ClickEvent.Action.SUGGEST_COMMAND,
-                                                "/" + CommandManager.COMMAND_ROOT + " " + c.getName()
-                                        )
-                                )
-                        )
-                );
+                                                "/" + CommandManager.COMMAND_ROOT + " " + c.getName()))));
             }
             // Build navigation with clickable components if available
             MutableText navText = Text.empty();
@@ -112,13 +110,16 @@ public class Help extends Command {
                 NoteblockPlayer.addChatMessage("§6Help: §3" + c.getName());
                 NoteblockPlayer.addChatMessage("§6Description: §3" + c.getDescription());
                 if (c.getSyntax().length == 0) {
-                    NoteblockPlayer.addChatMessage("§6Usage: §3" + "/" + CommandManager.COMMAND_ROOT + " " + c.getName());
+                    NoteblockPlayer
+                            .addChatMessage("§6Usage: §3" + "/" + CommandManager.COMMAND_ROOT + " " + c.getName());
                 } else if (c.getSyntax().length == 1) {
-                    NoteblockPlayer.addChatMessage("§6Usage: §3" + "/" + CommandManager.COMMAND_ROOT + " " + c.getName() + " " + c.getSyntax()[0]);
+                    NoteblockPlayer.addChatMessage("§6Usage: §3" + "/" + CommandManager.COMMAND_ROOT + " " + c.getName()
+                            + " " + c.getSyntax()[0]);
                 } else {
                     NoteblockPlayer.addChatMessage("§6Usage:");
                     for (String syntax : c.getSyntax()) {
-                        NoteblockPlayer.addChatMessage("    §3" + "/" + CommandManager.COMMAND_ROOT + " " + c.getName() + " " + syntax);
+                        NoteblockPlayer.addChatMessage(
+                                "    §3" + "/" + CommandManager.COMMAND_ROOT + " " + c.getName() + " " + syntax);
                     }
                 }
                 if (c.getAliases().length > 0) {

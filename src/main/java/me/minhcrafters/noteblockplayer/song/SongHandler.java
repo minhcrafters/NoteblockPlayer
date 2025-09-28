@@ -31,6 +31,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class SongHandler {
+
     private static SongHandler instance = null;
 
     public static SongHandler getInstance() {
@@ -53,12 +54,15 @@ public class SongHandler {
     public boolean building = false;
     public boolean cleaningUp = false;
     public boolean dirty = false;
+    public boolean shouldPlay = false;
 
     public boolean wasFlying = false;
     public GameMode originalGamemode = GameMode.CREATIVE;
 
     boolean playlistChecked = false;
+    private boolean wasGamePaused = false;
 
+    @SuppressWarnings("static-access")
     public void onUpdate(boolean tick) {
         if (!cleaningUp) {
             // Check current playlist and load song from it if necessary
@@ -66,7 +70,8 @@ public class SongHandler {
                 if (!playlistChecked) {
                     playlistChecked = true;
                     if (!currentPlaylist.songsFailedToLoad.isEmpty()) {
-                        NoteblockPlayer.addChatMessage("§cFailed to load the following songs from the playlist: §4" + String.join(" ", currentPlaylist.songsFailedToLoad));
+                        NoteblockPlayer.addChatMessage("§cFailed to load the following songs from the playlist: §4"
+                                + String.join(" ", currentPlaylist.songsFailedToLoad));
                     }
                 }
                 Song nextSong = currentPlaylist.getNext();
@@ -155,7 +160,8 @@ public class SongHandler {
         // Otherwise, handle cleanup if necessary
         else {
             if (dirty) {
-                if (NoteblockPlayer.getConfig().autoCleanup && originalBlocks.size() != 0 && !NoteblockPlayer.getConfig().survivalOnly) {
+                if (NoteblockPlayer.getConfig().autoCleanup && originalBlocks.size() != 0
+                        && !NoteblockPlayer.getConfig().survivalOnly) {
                     partialResetAndCleanup();
                 } else {
                     restoreStateAndReset();
@@ -195,6 +201,7 @@ public class SongHandler {
     }
 
     // Sets currentSong and sets everything up for building
+    @SuppressWarnings("static-access")
     public void setSong(Song song) {
         partialReset();
 
@@ -204,11 +211,13 @@ public class SongHandler {
 
         loaderThread = null;
 
-        if (!NoteblockPlayer.getConfig().survivalOnly) setCreativeIfNeeded();
+        if (!NoteblockPlayer.getConfig().survivalOnly)
+            setCreativeIfNeeded();
         if (NoteblockPlayer.getConfig().doAnnouncement) {
             sendMessage(NoteblockPlayer.getConfig().announcementMessage.replaceAll("\\[name]", song.name));
         }
-        if (!NoteblockPlayer.getConfig().survivalOnly) getAndSaveBuildSlot();
+        if (!NoteblockPlayer.getConfig().survivalOnly)
+            getAndSaveBuildSlot();
         prepareStage();
         NoteblockPlayer.addChatMessage("§6Building noteblocks");
         NoteblockPlayer.addChatMessage(String.valueOf(currentSong != null));
@@ -223,11 +232,13 @@ public class SongHandler {
         loaderThread = null;
     }
 
+    @SuppressWarnings("static-access")
     public void setPlaylist(Path playlist) {
         if (loaderThread != null || currentSong != null || !songQueue.isEmpty()) {
             NoteblockPlayer.addChatMessage("§cCannot start playing a playlist while something else is playing");
         } else {
-            currentPlaylist = new Playlist(playlist, NoteblockPlayer.getConfig().loopPlaylists, NoteblockPlayer.getConfig().shufflePlaylists);
+            currentPlaylist = new Playlist(playlist, NoteblockPlayer.getConfig().loopPlaylists,
+                    NoteblockPlayer.getConfig().shufflePlaylists);
             playlistChecked = false;
         }
     }
@@ -259,6 +270,7 @@ public class SongHandler {
     private int buildSlot = -1;
     private ItemStack prevHeldItem = null;
 
+    @SuppressWarnings("static-access")
     private void handleBuilding() {
         // NoteblockPlayer.addChatMessage("handleBuilding called");
         setBuildProgressDisplay();
@@ -267,7 +279,8 @@ public class SongHandler {
             return;
         }
         ClientWorld world = NoteblockPlayer.mc.world;
-        if (!NoteblockPlayer.getConfig().survivalOnly && NoteblockPlayer.mc.interactionManager.getCurrentGameMode() != GameMode.CREATIVE) {
+        if (!NoteblockPlayer.getConfig().survivalOnly
+                && NoteblockPlayer.mc.interactionManager.getCurrentGameMode() != GameMode.CREATIVE) {
             return;
         }
 
@@ -292,11 +305,12 @@ public class SongHandler {
             }
         }
 
-        if (stage.nothingToBuild()) { // If there's still nothing to build after checking build status, switch to playing
+        if (stage.nothingToBuild()) { // If there's still nothing to build after checking build status, switch to
+                                  // playing
             building = false;
 
+            setSurvivalIfNeeded();
             if (!NoteblockPlayer.getConfig().survivalOnly) {
-                setSurvivalIfNeeded();
                 restoreBuildSlot();
             }
 
@@ -325,22 +339,25 @@ public class SongHandler {
             // Also calculate average notes per second for comparison
             double avgNotesPerSecond = totalNotes / songDuration;
 
-            // Use maximum notes per second for tick rate calculation with a balanced approach
+            // Use maximum notes per second for tick rate calculation with a balanced
+            // approach
             double tickRate = Math.max(20, 20 + maxNotesPerSecond + avgNotesPerSecond);
 
-            NoteblockPlayer.addChatMessage(String.format("§6Song stats: §3Max: %d nps §7| §3Avg: %.1f nps §7| §3Tick rate: %.1f",
-                    maxNotesPerSecond, avgNotesPerSecond, tickRate));
+            NoteblockPlayer.addChatMessage(
+                    String.format("§6Song stats: §3Max: %d nps §7| §3Avg: %.1f nps §7| §3Tick rate: %.1f",
+                            maxNotesPerSecond, avgNotesPerSecond, tickRate));
 
             NoteblockPlayer.mc.getNetworkHandler().sendCommand("tick rate " + tickRate);
 
-            NoteblockPlayer.addChatMessage("§6Now playing §3" + currentSong.name);
+            shouldPlay = true;
         }
 
         if (!NoteblockPlayer.getConfig().survivalOnly) { // Regular mode
             if (!stage.requiredBreaks.isEmpty()) {
                 incrementBreakAllowance();
                 while (consumeBreakAllowance()) {
-                    if (stage.requiredBreaks.isEmpty()) continue;
+                    if (stage.requiredBreaks.isEmpty())
+                        continue;
                     BlockPos bp = stage.requiredBreaks.poll();
                     attackBlock(bp);
                 }
@@ -348,7 +365,8 @@ public class SongHandler {
             } else if (!stage.missingNotes.isEmpty()) {
                 incrementPlaceAllowance();
                 while (consumePlaceAllowance()) {
-                    if (stage.missingNotes.isEmpty()) continue;
+                    if (stage.missingNotes.isEmpty())
+                        continue;
                     int desiredNoteId = stage.missingNotes.pollFirst();
                     BlockPos bp = stage.noteblockPositions.get(desiredNoteId);
                     if (bp == null) {
@@ -382,10 +400,17 @@ public class SongHandler {
         ProgressDisplay.getInstance().setTotalTicks(stage.totalMissingNotes);
 
         MutableText buildText = Text.empty().append(Text.literal("Building noteblocks").formatted(Formatting.GOLD));
-        // .append(Text.literal((stage.totalMissingNotes - stage.missingNotes.size()) + "/" + stage.totalMissingNotes).formatted(Formatting.DARK_AQUA));
+        // .append(Text.literal((stage.totalMissingNotes - stage.missingNotes.size()) +
+        // "/" + stage.totalMissingNotes).formatted(Formatting.DARK_AQUA));
         MutableText playlistText = Text.empty();
         if (currentPlaylist != null && currentPlaylist.loaded) {
-            playlistText = playlistText.append(Text.literal("Playlist: ").formatted(Formatting.GOLD)).append(Text.literal(currentPlaylist.name).formatted(Formatting.BLUE)).append(Text.literal(" | ").formatted(Formatting.GOLD)).append(Text.literal(String.format(" (%s/%s)", currentPlaylist.songNumber, currentPlaylist.songs.size())).formatted(Formatting.DARK_AQUA));
+            playlistText = playlistText.append(Text.literal("Playlist: ").formatted(Formatting.GOLD))
+                    .append(Text.literal(currentPlaylist.name).formatted(Formatting.BLUE))
+                    .append(Text.literal(" | ").formatted(Formatting.GOLD))
+                    .append(Text
+                            .literal(
+                                    String.format(" (%s/%s)", currentPlaylist.songNumber, currentPlaylist.songs.size()))
+                            .formatted(Formatting.DARK_AQUA));
             if (currentPlaylist.loop) {
                 playlistText.append(Text.literal(" | Looping").formatted(Formatting.GOLD));
             }
@@ -403,11 +428,11 @@ public class SongHandler {
                 Text.literal(currentSong.name).formatted(Formatting.BLUE),
                 Text.literal(currentSong.author).formatted(Formatting.DARK_AQUA),
                 durationText,
-                10
-        );
+                10);
     }
 
     // Runs every frame
+    @SuppressWarnings("static-access")
     private void handlePlaying(boolean tick) {
         if (tick) {
             setPlayProgressDisplay();
@@ -416,6 +441,12 @@ public class SongHandler {
         if (NoteblockPlayer.mc.interactionManager.getCurrentGameMode() != GameMode.SURVIVAL) {
             currentSong.pause();
             return;
+        }
+
+        if (shouldPlay) {
+            currentSong.play();
+            shouldPlay = false;
+            NoteblockPlayer.addChatMessage("§6Now playing §3" + currentSong.name);
         }
 
         if (tick) {
@@ -427,7 +458,8 @@ public class SongHandler {
                     try {
                         stage.checkSurvivalBuildStatus(currentSong);
                     } catch (Stage.NotEnoughInstrumentsException e) {
-                        NoteblockPlayer.addChatMessage("§6Stopped because stage is missing instruments required for song.");
+                        NoteblockPlayer
+                                .addChatMessage("§6Stopped because stage is missing instruments required for song.");
                         restoreStateAndReset();
                         return;
                     }
@@ -435,7 +467,8 @@ public class SongHandler {
             }
             if (!stage.nothingToBuild()) { // Switch to building
                 building = true;
-                if (!NoteblockPlayer.getConfig().survivalOnly) setCreativeIfNeeded();
+                if (!NoteblockPlayer.getConfig().survivalOnly)
+                    setCreativeIfNeeded();
                 stage.sendMovementPacketToStagePosition();
                 currentSong.pause();
                 buildStartDelay = 20;
@@ -443,23 +476,32 @@ public class SongHandler {
                 for (int note : stage.missingNotes) {
                     int pitch = note % 25;
                     int instrumentId = note / 25;
-                    System.out.println("Missing note: " + Instrument.getInstrumentFromId(instrumentId).name() + ":" + pitch);
+                    System.out.println(
+                            "Missing note: " + Instrument.getInstrumentFromId(instrumentId).name() + ":" + pitch);
                 }
-                if (!NoteblockPlayer.getConfig().survivalOnly) getAndSaveBuildSlot();
+                if (!NoteblockPlayer.getConfig().survivalOnly)
+                    getAndSaveBuildSlot();
                 NoteblockPlayer.addChatMessage("§6Stage was altered. Rebuilding!");
                 return;
             }
+        }
+
+        if (currentSong.paused) {
+            // Paused, do nothing
+            return;
         }
 
         currentSong.play();
 
         boolean somethingPlayed = false;
         currentSong.advanceTime();
+
         while (currentSong.reachedNextNote()) {
             Note note = currentSong.getNextNote();
             if (note.velocity >= NoteblockPlayer.getConfig().velocityThreshold) {
                 BlockPos bp = stage.noteblockPositions.get(note.noteId);
                 if (bp != null) {
+                    // Normal play
                     attackBlock(bp);
                     somethingPlayed = true;
                 }
@@ -483,17 +525,26 @@ public class SongHandler {
                 // .append(Text.literal("Now playing: ").formatted(Formatting.GOLD))
                 .append(Text.literal(currentSong.name).formatted(Formatting.BLUE));
         // .append(Text.literal(" | ").formatted(Formatting.GOLD))
-        // .append(Text.literal(String.format("%s/%s", Util.formatTime(currentTime), Util.formatTime(totalTime))).formatted(Formatting.DARK_AQUA));
+        // .append(Text.literal(String.format("%s/%s", Util.formatTime(currentTime),
+        // Util.formatTime(totalTime))).formatted(Formatting.DARK_AQUA));
         if (currentSong.looping) {
             if (currentSong.loopCount > 0) {
-                songText.append(Text.literal(String.format(" | Loop (%d/%d)", currentSong.currentLoop, currentSong.loopCount)).formatted(Formatting.GOLD));
+                songText.append(
+                        Text.literal(String.format(" | Loop (%d/%d)", currentSong.currentLoop, currentSong.loopCount))
+                                .formatted(Formatting.GOLD));
             } else {
                 songText.append(Text.literal(" | Looping enabled").formatted(Formatting.GOLD));
             }
         }
         MutableText playlistText = Text.empty();
         if (currentPlaylist != null && currentPlaylist.loaded) {
-            playlistText = playlistText.append(Text.literal("Playlist: ").formatted(Formatting.GOLD)).append(Text.literal(currentPlaylist.name).formatted(Formatting.BLUE)).append(Text.literal(" | ").formatted(Formatting.GOLD)).append(Text.literal(String.format(" (%s/%s)", currentPlaylist.songNumber, currentPlaylist.songs.size())).formatted(Formatting.DARK_AQUA));
+            playlistText = playlistText.append(Text.literal("Playlist: ").formatted(Formatting.GOLD))
+                    .append(Text.literal(currentPlaylist.name).formatted(Formatting.BLUE))
+                    .append(Text.literal(" | ").formatted(Formatting.GOLD))
+                    .append(Text
+                            .literal(
+                                    String.format(" (%s/%s)", currentPlaylist.songNumber, currentPlaylist.songs.size()))
+                            .formatted(Formatting.DARK_AQUA));
             if (currentPlaylist.loop) {
                 playlistText.append(Text.literal(" | Looping").formatted(Formatting.GOLD));
             }
@@ -512,8 +563,7 @@ public class SongHandler {
                 songText,
                 Text.literal(currentSong.author).formatted(Formatting.DARK_AQUA),
                 durationText,
-                10
-        );
+                10);
     }
 
     // Runs every tick
@@ -545,9 +595,11 @@ public class SongHandler {
                 int cleanupHash = 31 * cleanupBreakList.hashCode() + cleanupPlaceList.hashCode();
                 if (cleanupHash == lastCleanupHash) { // If loop is detected, stop
                     cleaningUp = false;
-                    NoteblockPlayer.addChatMessage("§6Stopped restoring original blocks due to infinite loop being detected");
+                    NoteblockPlayer
+                            .addChatMessage("§6Stopped restoring original blocks due to infinite loop being detected");
                     if (!cleanupUnplaceableBlocks.isEmpty()) {
-                        NoteblockPlayer.addChatMessage(String.format("§3%d §6blocks could not be restored", cleanupUnplaceableBlocks.size()));
+                        NoteblockPlayer.addChatMessage(
+                                String.format("§3%d §6blocks could not be restored", cleanupUnplaceableBlocks.size()));
                     }
                     return;
                 } else {
@@ -561,7 +613,8 @@ public class SongHandler {
         if (!cleanupBreakList.isEmpty()) {
             incrementBreakAllowance();
             while (consumeBreakAllowance()) {
-                if (cleanupBreakList.isEmpty()) continue;
+                if (cleanupBreakList.isEmpty())
+                    continue;
                 BlockPos bp = cleanupBreakList.poll();
                 attackBlock(bp);
             }
@@ -569,13 +622,14 @@ public class SongHandler {
         } else if (!cleanupPlaceList.isEmpty()) {
             incrementPlaceAllowance();
             while (consumePlaceAllowance()) {
-                if (cleanupPlaceList.isEmpty()) continue;
+                if (cleanupPlaceList.isEmpty())
+                    continue;
                 BlockPos bp = cleanupPlaceList.pollFirst();
                 BlockState actualBlockState = world.getBlockState(bp);
                 BlockState desiredBlockState = originalBlocks.get(bp);
                 if (actualBlockState != desiredBlockState) {
                     holdBlock(desiredBlockState, buildSlot);
-                    if (!actualBlockState.isAir() && !actualBlockState.isLiquid()) {
+                    if (!actualBlockState.isAir() && actualBlockState.getFluidState().isEmpty()) {
                         attackBlock(bp);
                     }
                     placeBlock(bp);
@@ -587,7 +641,8 @@ public class SongHandler {
             cleaningUp = false;
             NoteblockPlayer.addChatMessage("§6Finished restoring original blocks");
             if (!cleanupUnplaceableBlocks.isEmpty()) {
-                NoteblockPlayer.addChatMessage(String.format("§3%d §6blocks could not be restored", cleanupUnplaceableBlocks.size()));
+                NoteblockPlayer.addChatMessage(
+                        String.format("§3%d §6blocks could not be restored", cleanupUnplaceableBlocks.size()));
             }
         }
     }
@@ -606,7 +661,7 @@ public class SongHandler {
                 if (isPlaceable(desiredBlockState)) {
                     cleanupPlaceList.add(bp);
                 }
-                if (!actualBlockState.isAir() && !actualBlockState.isLiquid()) {
+                if (!actualBlockState.isAir() && actualBlockState.getFluidState().isEmpty()) {
                     cleanupBreakList.add(bp);
                 }
             }
@@ -689,8 +744,12 @@ public class SongHandler {
         cleanupPlaceList = cleanupPlaceList.reversed();
         cleanupTotalBlocksToPlace = cleanupPlaceList.size();
 
-        boolean noNecessaryBreaks = cleanupBreakList.stream().allMatch(bp -> world.getBlockState(bp).getBlock().getDefaultState().equals(originalBlocks.get(bp).getBlock().getDefaultState()));
-        boolean noNecessaryPlacements = cleanupPlaceList.stream().allMatch(bp -> bp.equals(lastStage.playerPosition) || bp.equals(lastStage.playerPosition.up()) || world.getBlockState(bp).getBlock().getDefaultState().equals(originalBlocks.get(bp).getBlock().getDefaultState()));
+        boolean noNecessaryBreaks = cleanupBreakList.stream().allMatch(bp -> world.getBlockState(bp).getBlock()
+                .getDefaultState().equals(originalBlocks.get(bp).getBlock().getDefaultState()));
+        boolean noNecessaryPlacements = cleanupPlaceList.stream()
+                .allMatch(bp -> bp.equals(lastStage.playerPosition) || bp.equals(lastStage.playerPosition.up())
+                        || world.getBlockState(bp).getBlock().getDefaultState()
+                                .equals(originalBlocks.get(bp).getBlock().getDefaultState()));
         if (noNecessaryBreaks && noNecessaryPlacements) {
             cleanupUnplaceableBlocks.addAll(cleanupPlaceList);
             cleanupPlaceList.clear();
@@ -700,8 +759,10 @@ public class SongHandler {
     private void setCleanupProgressDisplay() {
         ProgressDisplay.getInstance().setCurrentTick(cleanupTotalBlocksToPlace - cleanupPlaceList.size());
         ProgressDisplay.getInstance().setTotalTicks(cleanupTotalBlocksToPlace);
-        MutableText buildText = Text.empty().append(Text.literal("Rebuilding original blocks").formatted(Formatting.GOLD));
-        // .append(Text.literal((cleanupTotalBlocksToPlace - cleanupPlaceList.size()) + "/" + cleanupTotalBlocksToPlace).formatted(Formatting.DARK_AQUA));
+        MutableText buildText = Text.empty()
+                .append(Text.literal("Rebuilding original blocks").formatted(Formatting.GOLD));
+        // .append(Text.literal((cleanupTotalBlocksToPlace - cleanupPlaceList.size()) +
+        // "/" + cleanupTotalBlocksToPlace).formatted(Formatting.DARK_AQUA));
         // ProgressDisplay.getInstance().setText(songText, playlistText, 100);
 
         String currentTime = String.valueOf(cleanupTotalBlocksToPlace - cleanupPlaceList.size());
@@ -713,13 +774,15 @@ public class SongHandler {
                 Text.empty(),
                 Text.empty(),
                 durationText,
-                10
-        );
+                10);
 
-        // ProgressDisplay.getInstance().setText(buildText, Text.literal((cleanupTotalBlocksToPlace - cleanupPlaceList.size()) + "/" + cleanupTotalBlocksToPlace).formatted(Formatting.DARK_AQUA), 100);
+        // ProgressDisplay.getInstance().setText(buildText,
+        // Text.literal((cleanupTotalBlocksToPlace - cleanupPlaceList.size()) + "/" +
+        // cleanupTotalBlocksToPlace).formatted(Formatting.DARK_AQUA), 100);
     }
 
-    // Resets all internal states like currentSong, and songQueue, which stops all actions
+    // Resets all internal states like currentSong, and songQueue, which stops all
+    // actions
     public void reset() {
         currentSong = null;
         currentPlaylist = null;
@@ -736,18 +799,21 @@ public class SongHandler {
         building = false;
         cleaningUp = false;
         dirty = false;
+        shouldPlay = false;
     }
 
     public void restoreStateAndReset() {
         restoreStateAndReset(true);
     }
 
+    @SuppressWarnings("static-access")
     public void restoreStateAndReset(boolean returnToStage) {
         if (returnToStage && lastStage != null) {
             lastStage.movePlayerToStagePosition();
         }
 
-        if (originalGamemode != NoteblockPlayer.mc.interactionManager.getCurrentGameMode() && !NoteblockPlayer.getConfig().survivalOnly) {
+        if (originalGamemode != NoteblockPlayer.mc.interactionManager.getCurrentGameMode()
+                && !NoteblockPlayer.getConfig().survivalOnly) {
             if (originalGamemode == GameMode.CREATIVE) {
                 sendGamemodeCommand(NoteblockPlayer.getConfig().creativeCommand);
             } else if (originalGamemode == GameMode.SURVIVAL) {
@@ -759,16 +825,18 @@ public class SongHandler {
             NoteblockPlayer.mc.player.getAbilities().flying = false;
         }
 
-        if (!NoteblockPlayer.getConfig().survivalOnly) restoreBuildSlot();
+        if (!NoteblockPlayer.getConfig().survivalOnly)
+            restoreBuildSlot();
 
         reset();
 
-//        if (NoteblockPlayer.mc.getServer() != null && !NoteblockPlayer.mc.getServer().isDedicated()) {
-//            NoteblockPlayer.mc.getServer().getCommandManager().executeWithPrefix(
-//                    NoteblockPlayer.mc.getServer().getCommandSource(),
-//                    "/tick rate 20"
-//            );
-//        }
+        // if (NoteblockPlayer.mc.getServer() != null &&
+        // !NoteblockPlayer.mc.getServer().isDedicated()) {
+        // NoteblockPlayer.mc.getServer().getCommandManager().executeWithPrefix(
+        // NoteblockPlayer.mc.getServer().getCommandSource(),
+        // "/tick rate 20"
+        // );
+        // }
         NoteblockPlayer.mc.getNetworkHandler().sendCommand("tick rate 20");
     }
 
@@ -830,6 +898,7 @@ public class SongHandler {
         }
     }
 
+    @SuppressWarnings("static-access")
     private void setCreativeIfNeeded() {
         cachedCommand = null;
         if (NoteblockPlayer.mc.interactionManager.getCurrentGameMode() != GameMode.CREATIVE) {
@@ -837,6 +906,7 @@ public class SongHandler {
         }
     }
 
+    @SuppressWarnings("static-access")
     private void setSurvivalIfNeeded() {
         cachedCommand = null;
         if (NoteblockPlayer.mc.interactionManager.getCurrentGameMode() != GameMode.SURVIVAL) {
@@ -844,7 +914,8 @@ public class SongHandler {
         }
     }
 
-    private final String[] instrumentNames = {"harp", "basedrum", "snare", "hat", "bass", "flute", "bell", "guitar", "chime", "xylophone", "iron_xylophone", "cow_bell", "didgeridoo", "bit", "banjo", "pling"};
+    private final String[] instrumentNames = { "harp", "basedrum", "snare", "hat", "bass", "flute", "bell", "guitar",
+            "chime", "xylophone", "iron_xylophone", "cow_bell", "didgeridoo", "bit", "banjo", "pling" };
 
     private void holdNoteblock(int id, int slot) {
         PlayerInventory inventory = NoteblockPlayer.mc.player.getInventory();
@@ -855,14 +926,12 @@ public class SongHandler {
         ItemStack noteblockStack = Items.NOTE_BLOCK.getDefaultStack();
         noteblockStack.set(DataComponentTypes.BLOCK_STATE, new BlockStateComponent(Map.of(
                 "instrument", instrumentNames[instrument],
-                "note", Integer.toString(note)
-        )));
+                "note", Integer.toString(note))));
         inventory.main.set(slot, noteblockStack);
         NoteblockPlayer.mc.interactionManager.clickCreativeStack(noteblockStack, 36 + slot);
         // Ensure inventory display updates correctly after setting the noteblock.
         NoteblockPlayer.mc.player.getInventory().markDirty();
     }
-
 
     private void holdBlock(BlockState bs, int slot) {
         PlayerInventory inventory = NoteblockPlayer.mc.player.getInventory();
@@ -888,7 +957,8 @@ public class SongHandler {
         fy += bp.getY();
         fz += bp.getZ();
         doRotateIfNeeded(fx, fy, fz);
-        NoteblockPlayer.mc.interactionManager.interactBlock(NoteblockPlayer.mc.player, Hand.MAIN_HAND, new BlockHitResult(new Vec3d(fx, fy, fz), Direction.UP, bp, false));
+        NoteblockPlayer.mc.interactionManager.interactBlock(NoteblockPlayer.mc.player, Hand.MAIN_HAND,
+                new BlockHitResult(new Vec3d(fx, fy, fz), Direction.UP, bp, false));
         doSwingIfNeeded();
     }
 
@@ -913,7 +983,8 @@ public class SongHandler {
 
     private void recordStageBlocks() {
         recordBlocks(stage.requiredBreaks);
-        recordBlocks(stage.missingNotes.stream().map(noteId -> stage.noteblockPositions.get(noteId)).filter(Objects::nonNull).toList());
+        recordBlocks(stage.missingNotes.stream().map(noteId -> stage.noteblockPositions.get(noteId))
+                .filter(Objects::nonNull).toList());
     }
 
     private boolean isPlaceable(BlockState bs) {
@@ -928,7 +999,7 @@ public class SongHandler {
             }
         }
         Block block = bs.getBlock();
-        if (bs.isAir() || bs.isLiquid()) {
+        if (bs.isAir() || !bs.getFluidState().isEmpty()) {
             return false;
         } else if (new ItemStack(block).isEmpty()) {
             return false;
@@ -939,6 +1010,7 @@ public class SongHandler {
         }
     }
 
+    @SuppressWarnings("static-access")
     private void doRotateIfNeeded(double lookX, double lookY, double lookZ) {
         if (NoteblockPlayer.getConfig().rotate) {
             double d = lookX - (lastStage.playerPosition.getX() + 0.5);
@@ -952,10 +1024,14 @@ public class SongHandler {
                 NoteblockPlayer.fakePlayer.setYaw(yaw);
                 NoteblockPlayer.fakePlayer.setHeadYaw(yaw);
             }
-            NoteblockPlayer.mc.player.networkHandler.getConnection().send(new PlayerMoveC2SPacket.Full(lastStage.playerPosition.getX() + 0.5, lastStage.playerPosition.getY(), lastStage.playerPosition.getZ() + 0.5, yaw, pitch, true, false));
+            NoteblockPlayer.mc.player.networkHandler.getConnection()
+                    .send(new PlayerMoveC2SPacket.Full(lastStage.playerPosition.getX() + 0.5,
+                            lastStage.playerPosition.getY(), lastStage.playerPosition.getZ() + 0.5, yaw, pitch, true,
+                            false));
         }
     }
 
+    @SuppressWarnings("static-access")
     private void doSwingIfNeeded() {
         if (NoteblockPlayer.getConfig().swing) {
             NoteblockPlayer.mc.player.swingHand(Hand.MAIN_HAND);
@@ -982,11 +1058,13 @@ public class SongHandler {
     private double breakAllowance = 0.0;
 
     // Called every tick where block breaking is being handled
+    @SuppressWarnings("static-access")
     private void incrementBreakAllowance() {
         breakAllowance += NoteblockPlayer.getConfig().breakSpeed / 20.0;
     }
 
-    // If there is enough breakAllowance, decrement breakAllowance and return true. Otherwise, return false.
+    // If there is enough breakAllowance, decrement breakAllowance and return true.
+    // Otherwise, return false.
     private boolean consumeBreakAllowance() {
         if (breakAllowance >= 1.0) {
             breakAllowance--;
@@ -1000,17 +1078,49 @@ public class SongHandler {
     private double placeAllowance = 0.0;
 
     // Called every tick where block placement are being handled
+    @SuppressWarnings("static-access")
     private void incrementPlaceAllowance() {
         placeAllowance += NoteblockPlayer.getConfig().placeSpeed / 20.0;
     }
 
-    // If there is enough placeAllowance, decrement placeAllowance and return true. Otherwise, return false.
+    // If there is enough placeAllowance, decrement placeAllowance and return true.
+    // Otherwise, return false.
     private boolean consumePlaceAllowance() {
         if (placeAllowance >= 1.0) {
             placeAllowance--;
             return true;
         } else {
             return false;
+        }
+    }
+
+    public void pause() {
+        if (currentSong != null) {
+            currentSong.pause();
+            NoteblockPlayer.addChatMessage("§6Paused §3" + currentSong.name);
+        } else {
+            NoteblockPlayer.addChatMessage("§6No song is currently playing");
+        }
+    }
+
+    public void resume() {
+        if (currentSong != null) {
+            currentSong.play();
+            NoteblockPlayer.addChatMessage("§6Resumed §3" + currentSong.name);
+        } else {
+            NoteblockPlayer.addChatMessage("§6No song is currently playing");
+        }
+    }
+
+    public void handleGamePause(boolean paused) {
+        if (currentSong != null) {
+            if (paused && !wasGamePaused) {
+                currentSong.pause();
+                wasGamePaused = true;
+            } else if (!paused && wasGamePaused) {
+                currentSong.play();
+                wasGamePaused = false;
+            }
         }
     }
 

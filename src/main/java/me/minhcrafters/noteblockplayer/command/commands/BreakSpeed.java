@@ -15,7 +15,7 @@ public class BreakSpeed extends Command {
     }
 
     public String[] getSyntax() {
-        return new String[]{
+        return new String[] {
                 "set <speed>",
                 "reset"
         };
@@ -33,7 +33,8 @@ public class BreakSpeed extends Command {
         String[] split = args.split(" ");
         switch (split[0].toLowerCase(Locale.ROOT)) {
             case "set":
-                if (split.length != 2) return false;
+                if (split.length != 2)
+                    return false;
                 double speed;
                 try {
                     speed = Double.parseDouble(split[1]);
@@ -46,14 +47,17 @@ public class BreakSpeed extends Command {
                     return true;
                 }
                 NoteblockPlayer.getConfig().breakSpeed = speed;
-                
-                NoteblockPlayer.addChatMessage("§6Set block breaking speed to §3" + NoteblockPlayer.getConfig().breakSpeed + " §6blocks/sec");
+
+                NoteblockPlayer.addChatMessage(
+                        "§6Set block breaking speed to §3" + NoteblockPlayer.getConfig().breakSpeed + " §6blocks/sec");
                 return true;
             case "reset":
-                if (split.length != 1) return false;
+                if (split.length != 1)
+                    return false;
                 NoteblockPlayer.getConfig().breakSpeed = 40;
-                
-                NoteblockPlayer.addChatMessage("§6Reset block breaking speed to §3" + NoteblockPlayer.getConfig().breakSpeed + " §6blocks/sec");
+
+                NoteblockPlayer.addChatMessage("§6Reset block breaking speed to §3"
+                        + NoteblockPlayer.getConfig().breakSpeed + " §6blocks/sec");
                 return true;
             default:
                 return false;
@@ -63,7 +67,7 @@ public class BreakSpeed extends Command {
     public CompletableFuture<Suggestions> getSuggestions(String args, SuggestionsBuilder suggestionsBuilder) {
         String[] split = args.split(" ", -1);
         if (split.length <= 1) {
-            return CommandSource.suggestMatching(new String[]{
+            return CommandSource.suggestMatching(new String[] {
                     "set",
                     "reset",
             }, suggestionsBuilder);

@@ -9,11 +9,11 @@ public class SetCreativeCommand extends Command {
     }
 
     public String[] getAliases() {
-        return new String[]{"sc"};
+        return new String[] { "sc" };
     }
 
     public String[] getSyntax() {
-        return new String[]{"<command>"};
+        return new String[] { "<command>" };
     }
 
     public String getDescription() {
@@ -27,8 +27,9 @@ public class SetCreativeCommand extends Command {
             } else {
                 NoteblockPlayer.getConfig().creativeCommand = args;
             }
-            NoteblockPlayer.addChatMessage("§6Set creative command to §3/" + NoteblockPlayer.getConfig().creativeCommand);
-            
+            NoteblockPlayer
+                    .addChatMessage("§6Set creative command to §3/" + NoteblockPlayer.getConfig().creativeCommand);
+
             return true;
         } else {
             return false;

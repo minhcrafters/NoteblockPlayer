@@ -4,6 +4,7 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import me.minhcrafters.noteblockplayer.NoteblockPlayer;
 import me.minhcrafters.noteblockplayer.command.CommandManager;
+import me.minhcrafters.noteblockplayer.utils.Paginator;
 import me.minhcrafters.noteblockplayer.utils.Utils;
 import me.minhcrafters.noteblockplayer.command.Command;
 import net.minecraft.text.ClickEvent;
@@ -16,9 +17,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 public class Songs extends Command {
     public String getName() {
@@ -26,13 +27,15 @@ public class Songs extends Command {
     }
 
     public String[] getAliases() {
-        return new String[]{"list"};
+        return new String[] { "list" };
     }
 
     public String[] getSyntax() {
-        return new String[]{
+        return new String[] {
                 "",
-                "<subdirectory>"};
+                "<subdirectory>",
+                "<page>",
+                "<subdirectory> <page>" };
     }
 
     public String getDescription() {
@@ -40,60 +43,59 @@ public class Songs extends Command {
     }
 
     public boolean processCommand(String args) {
-        if (!args.contains(" ")) {
-            Path dir;
-            if (args.isEmpty()) {
-                dir = NoteblockPlayer.SONGS_DIR;
-            } else {
-                dir = NoteblockPlayer.SONGS_DIR.resolve(args);
-                if (!Files.isDirectory(dir)) {
-                    NoteblockPlayer.addChatMessage("§cDirectory not found");
-                    return true;
-                }
-            }
-
-            List<Path> allSongs = new ArrayList<>();
+        String[] split = args.split(" ");
+        String subdir = "";
+        int page = 1;
+        if (split.length > 0) {
             try {
-                // Find all songs recursively
-                findSongsRecursively(dir, allSongs);
-            } catch (IOException e) {
-                NoteblockPlayer.addChatMessage("§cError reading folder: §4" + e.getMessage());
+                int potentialPage = Integer.parseInt(split[split.length - 1]);
+                page = potentialPage;
+                subdir = String.join(" ", Arrays.copyOfRange(split, 0, split.length - 1));
+            } catch (NumberFormatException e) {
+                subdir = args;
+            }
+        }
+
+        Path dir;
+        if (subdir.isEmpty()) {
+            dir = NoteblockPlayer.SONGS_DIR;
+        } else {
+            dir = NoteblockPlayer.SONGS_DIR.resolve(subdir);
+            if (!Files.isDirectory(dir)) {
+                NoteblockPlayer.addChatMessage("§cDirectory not found");
                 return true;
             }
-
-            if (allSongs.isEmpty()) {
-                NoteblockPlayer.addChatMessage("§bNo songs found. You can put midi or nbs files in the §3songs §6folder.");
-            } else {
-                NoteblockPlayer.addChatMessage("§6----------------------------------------");
-                NoteblockPlayer.addChatMessage("§eAll songs found in .minecraft/NoteblockPlayer/songs/" + args);
-                NoteblockPlayer.addChatMessage("§6(Click on a song to play it)");
-
-                // List all songs with clickable commands
-                for (Path songPath : allSongs) {
-                    // Get relative path from songs directory
-                    String relativePath = NoteblockPlayer.SONGS_DIR.relativize(songPath).toString();
-                    String songName = songPath.getFileName().toString();
-
-                    // Create clickable text component for the song
-                    Text songText = createClickableText(songName, "/" + CommandManager.COMMAND_ROOT + " play " + relativePath);
-
-                    // Combine with the path information
-                    Text fullText = Text.empty()
-                            .append(songText);
-                    // .append(Text.literal(" §7(" + relativePath + ")"));
-
-                    // Send the combined message
-                    NoteblockPlayer.addChatMessage(fullText);
-                }
-
-                NoteblockPlayer.addChatMessage("§6----------------------------------------");
-                NoteblockPlayer.addChatMessage("§eTotal songs found: §b" + allSongs.size());
-                NoteblockPlayer.addChatMessage("§6----------------------------------------");
-            }
-            return true;
-        } else {
-            return false;
         }
+
+        List<Path> allSongs = new ArrayList<>();
+        try {
+            // Find all songs recursively
+            findSongsRecursively(dir, allSongs);
+        } catch (IOException e) {
+            NoteblockPlayer.addChatMessage("§cError reading folder: §4" + e.getMessage());
+            return true;
+        }
+
+        if (allSongs.isEmpty()) {
+            NoteblockPlayer
+                    .addChatMessage("§bNo songs found. You can put midi or nbs files in the §3songs §6folder.");
+        } else {
+            ArrayList<Text> entries = new ArrayList<>();
+            for (Path songPath : allSongs) {
+                String relativePath = NoteblockPlayer.SONGS_DIR.relativize(songPath).toString();
+                String songName = songPath.getFileName().toString();
+                Text songText = createClickableText(songName,
+                        "/" + CommandManager.COMMAND_ROOT + " play " + relativePath);
+                entries.add(songText);
+            }
+
+            String commandToRun = "/" + CommandManager.COMMAND_ROOT + " songs" + (subdir.isEmpty() ? "" : " " + subdir);
+            Paginator paginator = new Paginator(entries,
+                    "§eAll songs found in .minecraft/NoteblockPlayer/songs/" + (subdir.isEmpty() ? "" : subdir),
+                    commandToRun, page, 10);
+            paginator.display();
+        }
+        return true;
     }
 
     /**
@@ -124,7 +126,8 @@ public class Songs extends Command {
     }
 
     /**
-     * Creates a clickable text component using the direct Style and ClickEvent approach.
+     * Creates a clickable text component using the direct Style and ClickEvent
+     * approach.
      * When clicked, the command specified in "command" will be executed.
      *
      * @param display The text to display

@@ -10,7 +10,7 @@ public class ToggleSurvivalOnly extends Command {
     }
 
     public String[] getAliases() {
-        return new String[]{"survivalOnly"};
+        return new String[] { "survivalOnly" };
     }
 
     public String[] getSyntax() {
@@ -34,7 +34,7 @@ public class ToggleSurvivalOnly extends Command {
             } else {
                 NoteblockPlayer.addChatMessage("§6Disabled survival only mode");
             }
-            
+
             return true;
         } else {
             return false;

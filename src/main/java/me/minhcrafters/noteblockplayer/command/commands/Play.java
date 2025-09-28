@@ -16,7 +16,7 @@ public class Play extends Command {
     }
 
     public String[] getSyntax() {
-        return new String[]{"<song or url>"};
+        return new String[] { "<song or url>" };
     }
 
     public String getDescription() {
@@ -25,8 +25,10 @@ public class Play extends Command {
 
     public boolean processCommand(String args) {
         if (!args.isEmpty()) {
-            if (NoteblockPlayer.getConfig().survivalOnly && NoteblockPlayer.mc.interactionManager.getCurrentGameMode() != GameMode.SURVIVAL) {
-                NoteblockPlayer.addChatMessage("§cTo play in survival only mode, you must be in survival mode to start with.");
+            if (NoteblockPlayer.getConfig().survivalOnly
+                    && NoteblockPlayer.mc.interactionManager.getCurrentGameMode() != GameMode.SURVIVAL) {
+                NoteblockPlayer
+                        .addChatMessage("§cTo play in survival only mode, you must be in survival mode to start with.");
                 return true;
             }
 

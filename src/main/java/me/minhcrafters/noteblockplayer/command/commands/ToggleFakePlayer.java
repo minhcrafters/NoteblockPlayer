@@ -9,7 +9,7 @@ public class ToggleFakePlayer extends Command {
     }
 
     public String[] getAliases() {
-        return new String[]{"fakePlayer", "fp"};
+        return new String[] { "fakePlayer", "fp" };
     }
 
     public String[] getSyntax() {
@@ -28,7 +28,7 @@ public class ToggleFakePlayer extends Command {
             } else {
                 NoteblockPlayer.addChatMessage("§6Disabled fake player");
             }
-            
+
             return true;
         } else {
             return false;

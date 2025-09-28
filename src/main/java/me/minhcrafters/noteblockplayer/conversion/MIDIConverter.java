@@ -21,7 +21,8 @@ public class MIDIConverter {
     public static final int NOTE_ON = 0x90;
     public static final int NOTE_OFF = 0x80;
 
-    public static Song getSongFromUrl(URL url) throws IOException, InvalidMidiDataException, URISyntaxException, NoSuchAlgorithmException, KeyManagementException {
+    public static Song getSongFromUrl(URL url) throws IOException, InvalidMidiDataException, URISyntaxException,
+            NoSuchAlgorithmException, KeyManagementException {
         Sequence sequence = MidiSystem.getSequence(DownloadUtils.DownloadToInputStream(url, 5 * 1024 * 1024));
         return getSong(sequence, Paths.get(url.toURI().getPath()).getFileName().toString());
     }
@@ -69,6 +70,12 @@ public class MIDIConverter {
             channelLayers.put(channel, new Layer(song, 100, 100));
         }
 
+        // Track pending NOTE_ON events for duration calculation: channel -> pitch -> Note
+        Map<Integer, Map<Integer, Note>> pendingNotes = new HashMap<>();
+        for (int channel = 0; channel < 16; channel++) {
+            pendingNotes.put(channel, new HashMap<>());
+        }
+
         for (Track track : sequence.getTracks()) {
             long microTime = 0;
             int[] instrumentIds = new int[16];
@@ -94,7 +101,8 @@ public class MIDIConverter {
                     int new_mpq = ((data[0] & 0xFF) << 16) |
                             ((data[1] & 0xFF) << 8) |
                             (data[2] & 0xFF);
-                    if (new_mpq != 0) mpq = new_mpq;
+                    if (new_mpq != 0)
+                        mpq = new_mpq;
                     tempoEventIdx++;
                 }
 
@@ -118,7 +126,8 @@ public class MIDIConverter {
                         case NOTE_ON:
                             int pitch = sm.getData1();
                             int velocity = sm.getData2();
-                            if (velocity == 0) break;
+                            if (velocity == 0)
+                                break;
                             velocity = (velocity * 100) / 127;
 
                             // Update layer velocity if needed
@@ -132,24 +141,40 @@ public class MIDIConverter {
                             if (channel == 9) {
                                 note = getMidiPercussionNote(pitch, velocity, panning[channel], microTime);
                             } else {
-                                note = getMidiInstrumentNote(instrumentIds[channel], pitch, velocity, panning[channel], microTime);
+                                note = getMidiInstrumentNote(instrumentIds[channel], pitch, velocity, panning[channel],
+                                        microTime);
                             }
 
                             if (note != null) {
                                 // Add note to the appropriate layer instead of directly to the song
                                 layer.addNote(note);
+                                // Track for duration calculation
+                                pendingNotes.get(channel).put(pitch, note);
                             }
 
                             long timeOn = microTime / 1000L;
-                            if (timeOn > song.length) song.length = timeOn;
+                            if (timeOn > song.length)
+                                song.length = timeOn;
                             break;
 
                         case NOTE_OFF:
+                            int offPitch = sm.getData1();
                             long deltaTickOff = event.getTick() - prevTick;
                             prevTick = event.getTick();
                             microTime += (mpq * deltaTickOff) / tpq;
                             long timeOff = microTime / 1000L;
-                            if (timeOff > song.length) song.length = timeOff;
+                            if (timeOff > song.length)
+                                song.length = timeOff;
+
+                            // Calculate duration for the note
+                            Note pendingNote = pendingNotes.get(channel).get(offPitch);
+                            if (pendingNote != null) {
+                                long durationMs = timeOff - (pendingNote.time / 1000L);
+                                if (durationMs > 0) {
+                                    pendingNote.duration = durationMs;
+                                }
+                                pendingNotes.get(channel).remove(offPitch);
+                            }
                             break;
                     }
                 }
@@ -183,8 +208,8 @@ public class MIDIConverter {
         return song;
     }
 
-
-    public static Note getMidiInstrumentNote(int midiInstrument, int midiPitch, int velocity, int panning, long microTime) {
+    public static Note getMidiInstrumentNote(int midiInstrument, int midiPitch, int velocity, int panning,
+            long microTime) {
         me.minhcrafters.noteblockplayer.song.Instrument instrument = null;
         me.minhcrafters.noteblockplayer.song.Instrument[] instrumentList = instrumentMap.get(midiInstrument);
         if (instrumentList != null) {
@@ -221,154 +246,652 @@ public class MIDIConverter {
 
     static {
         // Piano (HARP BASS BELL)
-        instrumentMap.put(0, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Acoustic Grand Piano
-        instrumentMap.put(1, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Bright Acoustic Piano
-        instrumentMap.put(2, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Electric Grand Piano
-        instrumentMap.put(3, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Honky-tonk Piano
-        instrumentMap.put(4, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Electric Piano 1
-        instrumentMap.put(5, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Electric Piano 2
-        instrumentMap.put(6, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Harpsichord
-        instrumentMap.put(7, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Clavinet
+        instrumentMap.put(0,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Acoustic Grand Piano
+        instrumentMap.put(1,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Bright Acoustic Piano
+        instrumentMap.put(2,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Electric Grand Piano
+        instrumentMap.put(3,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Honky-tonk Piano
+        instrumentMap.put(4,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Electric Piano 1
+        instrumentMap.put(5,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Electric Piano 2
+        instrumentMap.put(6,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Harpsichord
+        instrumentMap.put(7,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Clavinet
 
         // Chromatic Percussion (IRON_XYLOPHONE XYLOPHONE BASS)
-        instrumentMap.put(8, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Celesta
-        instrumentMap.put(9, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Glockenspiel
-        instrumentMap.put(10, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Music Box
-        instrumentMap.put(11, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Vibraphone
-        instrumentMap.put(12, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Marimba
-        instrumentMap.put(13, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Xylophone
-        instrumentMap.put(14, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Tubular Bells
-        instrumentMap.put(15, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Dulcimer
+        instrumentMap.put(8,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Celesta
+        instrumentMap.put(9,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Glockenspiel
+        instrumentMap.put(10,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Music Box
+        instrumentMap.put(11,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Vibraphone
+        instrumentMap.put(12,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Marimba
+        instrumentMap.put(13,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Xylophone
+        instrumentMap.put(14,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Tubular Bells
+        instrumentMap.put(15,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Dulcimer
 
         // Organ (BIT DIDGERIDOO BELL)
-        instrumentMap.put(16, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Drawbar Organ
-        instrumentMap.put(17, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Percussive Organ
-        instrumentMap.put(18, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Rock Organ
-        instrumentMap.put(19, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Church Organ
-        instrumentMap.put(20, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Reed Organ
-        instrumentMap.put(21, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Accordian
-        instrumentMap.put(22, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Harmonica
-        instrumentMap.put(23, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Tango Accordian
+        instrumentMap.put(16,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Drawbar Organ
+        instrumentMap.put(17,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Percussive Organ
+        instrumentMap.put(18,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Rock Organ
+        instrumentMap.put(19,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Church Organ
+        instrumentMap.put(20,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Reed Organ
+        instrumentMap.put(21,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Accordian
+        instrumentMap.put(22,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Harmonica
+        instrumentMap.put(23,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Tango Accordian
 
         // Guitar (BIT DIDGERIDOO BELL)
-        instrumentMap.put(24, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.GUITAR, me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Acoustic Guitar (nylon)
-        instrumentMap.put(25, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.GUITAR, me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Acoustic Guitar (steel)
-        instrumentMap.put(26, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.GUITAR, me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Electric Guitar (jazz)
-        instrumentMap.put(27, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.GUITAR, me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Electric Guitar (clean)
-        instrumentMap.put(28, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.GUITAR, me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Electric Guitar (muted)
-        instrumentMap.put(29, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Overdriven Guitar
-        instrumentMap.put(30, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Distortion Guitar
-        instrumentMap.put(31, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.GUITAR, me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Guitar Harmonics
+        instrumentMap.put(24,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.GUITAR,
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Acoustic Guitar (nylon)
+        instrumentMap.put(25,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.GUITAR,
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Acoustic Guitar (steel)
+        instrumentMap.put(26,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.GUITAR,
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Electric Guitar (jazz)
+        instrumentMap.put(27,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.GUITAR,
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Electric Guitar (clean)
+        instrumentMap.put(28,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.GUITAR,
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Electric Guitar (muted)
+        instrumentMap.put(29,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Overdriven Guitar
+        instrumentMap.put(30,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Distortion Guitar
+        instrumentMap.put(31,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.GUITAR,
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Guitar Harmonics
 
         // Bass
-        instrumentMap.put(32, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Acoustic Bass
-        instrumentMap.put(33, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Electric Bass (finger)
-        instrumentMap.put(34, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Electric Bass (pick)
-        instrumentMap.put(35, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Fretless Bass
-        instrumentMap.put(36, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Slap Bass 1
-        instrumentMap.put(37, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Slap Bass 2
-        instrumentMap.put(38, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Synth Bass 1
-        instrumentMap.put(39, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE}); // Synth Bass 2
+        instrumentMap.put(32,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Acoustic Bass
+        instrumentMap.put(33,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Electric Bass (finger)
+        instrumentMap.put(34,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Electric Bass (pick)
+        instrumentMap.put(35,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Fretless Bass
+        instrumentMap.put(36,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Slap Bass 1
+        instrumentMap.put(37,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Slap Bass 2
+        instrumentMap.put(38,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Synth Bass 1
+        instrumentMap.put(39,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE }); // Synth Bass 2
 
         // Strings
-        instrumentMap.put(40, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.GUITAR, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Violin
-        instrumentMap.put(41, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.GUITAR, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Viola
-        instrumentMap.put(42, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.GUITAR, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Cello
-        instrumentMap.put(43, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.GUITAR, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Contrabass
-        instrumentMap.put(44, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Tremolo Strings
-        instrumentMap.put(45, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Pizzicato Strings
-        instrumentMap.put(46, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.CHIME}); // Orchestral Harp
-        instrumentMap.put(47, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Timpani
+        instrumentMap.put(40,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.GUITAR,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Violin
+        instrumentMap.put(41,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.GUITAR,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Viola
+        instrumentMap.put(42,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.GUITAR,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Cello
+        instrumentMap.put(43,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.GUITAR,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Contrabass
+        instrumentMap.put(44,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Tremolo Strings
+        instrumentMap.put(45,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Pizzicato Strings
+        instrumentMap.put(46,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.CHIME }); // Orchestral Harp
+        instrumentMap.put(47,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Timpani
 
         // Ensemble
-        instrumentMap.put(48, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // String Ensemble 1
-        instrumentMap.put(49, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // String Ensemble 2
-        instrumentMap.put(50, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Synth Strings 1
-        instrumentMap.put(51, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Synth Strings 2
-        instrumentMap.put(52, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Choir Aahs
-        instrumentMap.put(53, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Voice Oohs
-        instrumentMap.put(54, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Synth Choir
-        instrumentMap.put(55, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL}); // Orchestra Hit
+        instrumentMap.put(48,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // String Ensemble 1
+        instrumentMap.put(49,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // String Ensemble 2
+        instrumentMap.put(50,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Synth Strings 1
+        instrumentMap.put(51,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Synth Strings 2
+        instrumentMap.put(52,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Choir Aahs
+        instrumentMap.put(53,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Voice Oohs
+        instrumentMap.put(54,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Synth Choir
+        instrumentMap.put(55,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL }); // Orchestra Hit
 
         // Brass
-        instrumentMap.put(56, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(57, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(58, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(59, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(60, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(61, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(62, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(63, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
+        instrumentMap.put(56,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(57,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(58,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(59,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(60,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(61,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(62,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(63,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
 
         // Reed
-        instrumentMap.put(64, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(65, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(66, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(67, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(68, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(69, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(70, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(71, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
+        instrumentMap.put(64,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(65,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(66,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(67,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(68,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(69,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(70,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(71,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
 
         // Pipe
-        instrumentMap.put(72, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(73, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(74, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(75, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(76, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(77, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(78, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(79, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.FLUTE, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
+        instrumentMap.put(72,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(73,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(74,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(75,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(76,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(77,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(78,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(79,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.FLUTE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
 
         // Synth Lead
-        instrumentMap.put(80, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(81, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(82, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(83, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(84, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(85, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(86, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(87, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
+        instrumentMap.put(80,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(81,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(82,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(83,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(84,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(85,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(86,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(87,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
 
         // Synth Pad
-        instrumentMap.put(88, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(89, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(90, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(91, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(92, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(93, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(94, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(95, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
+        instrumentMap.put(88,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(89,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(90,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(91,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(92,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(93,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(94,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(95,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
 
         // Synth Effects
-//		instrumentMap.put(96, new Instrument[]{});
-//		instrumentMap.put(97, new Instrument[]{});
-        instrumentMap.put(98, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BIT, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(99, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(100, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(101, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(102, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(103, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
+        // instrumentMap.put(96, new Instrument[]{});
+        // instrumentMap.put(97, new Instrument[]{});
+        instrumentMap.put(98,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BIT,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(99,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(100,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(101,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(102,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(103,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
 
         // Ethnic
-        instrumentMap.put(104, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BANJO, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(105, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BANJO, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(106, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BANJO, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(107, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BANJO, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(108, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.BANJO, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(109, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(110, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
-        instrumentMap.put(111, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.HARP, me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO, me.minhcrafters.noteblockplayer.song.Instrument.BELL});
+        instrumentMap.put(104,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BANJO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(105,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BANJO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(106,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BANJO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(107,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BANJO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(108,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.BANJO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(109,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(110,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
+        instrumentMap.put(111,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.HARP,
+                        me.minhcrafters.noteblockplayer.song.Instrument.DIDGERIDOO,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BELL });
 
         // Percussive
-        instrumentMap.put(112, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE});
-        instrumentMap.put(113, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE});
-        instrumentMap.put(114, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE});
-        instrumentMap.put(115, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE});
-        instrumentMap.put(116, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE});
-        instrumentMap.put(117, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE});
-        instrumentMap.put(118, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE});
-        instrumentMap.put(119, new me.minhcrafters.noteblockplayer.song.Instrument[]{me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE, me.minhcrafters.noteblockplayer.song.Instrument.BASS, me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE});
+        instrumentMap.put(112,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE });
+        instrumentMap.put(113,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE });
+        instrumentMap.put(114,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE });
+        instrumentMap.put(115,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE });
+        instrumentMap.put(116,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE });
+        instrumentMap.put(117,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE });
+        instrumentMap.put(118,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE });
+        instrumentMap.put(119,
+                new me.minhcrafters.noteblockplayer.song.Instrument[] {
+                        me.minhcrafters.noteblockplayer.song.Instrument.IRON_XYLOPHONE,
+                        me.minhcrafters.noteblockplayer.song.Instrument.BASS,
+                        me.minhcrafters.noteblockplayer.song.Instrument.XYLOPHONE });
     }
 
     public static HashMap<Integer, Integer> percussionMap = new HashMap<>();

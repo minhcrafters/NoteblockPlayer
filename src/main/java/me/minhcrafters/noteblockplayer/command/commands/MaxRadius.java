@@ -17,7 +17,7 @@ public class MaxRadius extends Command {
 
     @Override
     public String[] getSyntax() {
-        return new String[]{"set <radius>", "get"};
+        return new String[] { "set <radius>", "get" };
     }
 
     @Override
@@ -42,7 +42,7 @@ public class MaxRadius extends Command {
                         }
                         NoteblockPlayer.getConfig().maxRadius = radius;
                         NoteblockPlayer.addChatMessage("Radius value set to " + NoteblockPlayer.getConfig().maxRadius);
-                        
+
                         return true;
                     } catch (NumberFormatException e) {
                         return false;
@@ -60,7 +60,7 @@ public class MaxRadius extends Command {
     public CompletableFuture<Suggestions> getSuggestions(String args, SuggestionsBuilder suggestionsBuilder) {
         String[] split = args.split(" ", -1);
         if (split.length <= 1) {
-            return CommandSource.suggestMatching(new String[]{
+            return CommandSource.suggestMatching(new String[] {
                     "set",
                     "get",
             }, suggestionsBuilder);

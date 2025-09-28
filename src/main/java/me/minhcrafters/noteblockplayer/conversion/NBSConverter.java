@@ -15,7 +15,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 
 public class NBSConverter {
-    public static Instrument[] instrumentIndex = new Instrument[]{
+    public static Instrument[] instrumentIndex = new Instrument[] {
             Instrument.HARP,
             Instrument.BASS,
             Instrument.BASEDRUM,
@@ -107,13 +107,15 @@ public class NBSConverter {
             short tick = -1;
             while (true) {
                 int tickJumps = buffer.getShort();
-                if (tickJumps == 0) break;
+                if (tickJumps == 0)
+                    break;
                 tick += (short) tickJumps;
 
                 short layer = -1;
                 while (true) {
                     int layerJumps = buffer.getShort();
-                    if (layerJumps == 0) break;
+                    if (layerJumps == 0)
+                        break;
                     layer += (short) layerJumps;
                     NBSNote note = new NBSNote();
                     note.tick = tick;
@@ -199,8 +201,7 @@ public class NBSConverter {
                                 noteId,
                                 getMilliTime(nbsNote.tick, tempo),
                                 nbsNote.velocity,
-                                nbsNote.panning - 100
-                        );
+                                nbsNote.panning - 100);
 
                         layer.addNote(note);
                     }
@@ -224,7 +225,9 @@ public class NBSConverter {
             throw new IOException("Invalid NBS file: Unexpected end of file - " + e.getMessage());
         } catch (IndexOutOfBoundsException e) {
             e.printStackTrace();
-            throw new IOException("Invalid NBS file: Index out of bounds - " + e.getMessage() + ". This may be caused by an instrument ID that exceeds the supported range (0-" + (instrumentIndex.length - 1) + ", probable cause: custom instruments)");
+            throw new IOException("Invalid NBS file: Index out of bounds - " + e.getMessage()
+                    + ". This may be caused by an instrument ID that exceeds the supported range (0-"
+                    + (instrumentIndex.length - 1) + ", probable cause: custom instruments)");
         } catch (Exception e) {
             if (e instanceof IOException) {
                 throw (IOException) e;
@@ -248,7 +251,8 @@ public class NBSConverter {
         }
 
         if (buffer.remaining() < length) {
-            throw new IOException("Buffer underflow: requested " + length + " bytes but only " + buffer.remaining() + " available");
+            throw new IOException(
+                    "Buffer underflow: requested " + length + " bytes but only " + buffer.remaining() + " available");
         }
 
         byte[] arr = new byte[length];
@@ -344,8 +348,7 @@ public class NBSConverter {
                 Layer newLayer = new Layer(
                         originalLayer.song,
                         originalLayer.velocity,
-                        originalLayer.panning
-                );
+                        originalLayer.panning);
                 clusterLayers.add(newLayer);
             }
 

@@ -60,7 +60,8 @@ public abstract class Config {
     private static final Pattern DECIMAL_ONLY = Pattern.compile("-?(\\d+\\.?\\d*|\\d*\\.?\\d+|\\.)");
     private static final Pattern HEXADECIMAL_ONLY = Pattern.compile("(-?[#0-9a-fA-F]*)");
 
-    private static final LinkedHashMap<String, EntryInfo> entries = new LinkedHashMap<>();    // modid:fieldName -> EntryInfo
+    private static final LinkedHashMap<String, EntryInfo> entries = new LinkedHashMap<>(); // modid:fieldName ->
+                                                                                           // EntryInfo
     private static boolean reloadScreen = false;
 
     public static class EntryInfo {
@@ -72,7 +73,7 @@ public abstract class Config {
         public final String modid, fieldName;
         int listIndex;
         Object defaultValue, value, function;
-        String tempValue;   // The value visible in the config screen
+        String tempValue; // The value visible in the config screen
         boolean inLimits = true;
         Text name, error;
         ClickableWidget actionButton; // color picker button / explorer button
@@ -92,8 +93,10 @@ public abstract class Config {
                 this.fieldName = "";
                 this.dataType = null;
             }
-            if (entry != null && !entry.name().isEmpty()) this.name = Text.translatable(entry.name());
-            else if (comment != null && !comment.name().isEmpty()) this.name = Text.translatable(comment.name());
+            if (entry != null && !entry.name().isEmpty())
+                this.name = Text.translatable(entry.name());
+            else if (comment != null && !comment.name().isEmpty())
+                this.name = Text.translatable(comment.name());
         }
 
         public void setValue(Object value) {
@@ -107,49 +110,59 @@ public abstract class Config {
         }
 
         public String toTemporaryValue() {
-            if (this.field.getType() != List.class) return this.value.toString();
-            else try {
-                return ((List<?>) this.value).get(this.listIndex).toString();
-            } catch (Exception ignored) {
-                return "";
-            }
+            if (this.field.getType() != List.class)
+                return this.value.toString();
+            else
+                try {
+                    return ((List<?>) this.value).get(this.listIndex).toString();
+                } catch (Exception ignored) {
+                    return "";
+                }
         }
 
         public void updateFieldValue() {
             try {
-                if (this.field.get(null) != value) entries.values().forEach(EntryInfo::updateConditions);
+                if (this.field.get(null) != value)
+                    entries.values().forEach(EntryInfo::updateConditions);
                 this.field.set(null, this.value);
             } catch (IllegalAccessException ignored) {
             }
         }
 
-        @SuppressWarnings("ConstantValue") //pertains to requiredModLoaded
+        @SuppressWarnings("ConstantValue") // pertains to requiredModLoaded
         public void updateConditions() {
             boolean prevConditionState = this.conditionsMet;
-            if (this.conditions.length > 0) this.conditionsMet = true;    // reset conditions
+            if (this.conditions.length > 0)
+                this.conditionsMet = true; // reset conditions
             for (Condition condition : this.conditions) {
-                if (!condition.requiredModId().isEmpty() && !FabricLoader.getInstance().isModLoaded(condition.requiredModId()))
+                if (!condition.requiredModId().isEmpty()
+                        && !FabricLoader.getInstance().isModLoaded(condition.requiredModId()))
                     this.conditionsMet = false;
-                String requiredOption = condition.requiredOption().contains(":") ? condition.requiredOption() : (this.modid + ":" + condition.requiredOption());
+                String requiredOption = condition.requiredOption().contains(":") ? condition.requiredOption()
+                        : (this.modid + ":" + condition.requiredOption());
                 if (entries.get(requiredOption) instanceof EntryInfo info)
                     this.conditionsMet &= List.of(condition.requiredValue()).contains(info.tempValue);
-                if (!this.conditionsMet) break;
+                if (!this.conditionsMet)
+                    break;
             }
-            if (prevConditionState != this.conditionsMet) reloadScreen = true;
+            if (prevConditionState != this.conditionsMet)
+                reloadScreen = true;
         }
 
         public <T> void writeList(int index, T value) {
             var list = (List<T>) this.value;
-            if (index >= list.size()) list.add(value);
-            else list.set(index, value);
+            if (index >= list.size())
+                list.add(value);
+            else
+                list.set(index, value);
         }
     }
 
     public static final Map<String, Class<? extends Config>> configClass = new HashMap<>();
     private static Path path;
 
-    private static final Gson gson = new GsonBuilder()
-            .excludeFieldsWithModifiers(Modifier.TRANSIENT).excludeFieldsWithModifiers(Modifier.PRIVATE)
+    private static final Gson gson = new GsonBuilder().excludeFieldsWithModifiers(Modifier.TRANSIENT)
+            .excludeFieldsWithModifiers(Modifier.PRIVATE)
             .addSerializationExclusionStrategy(new NonEntryExclusionStrategy())
             .registerTypeAdapter(Identifier.class, new TypeAdapter<Identifier>() {
                 public void write(JsonWriter out, Identifier id) throws IOException {
@@ -191,7 +204,9 @@ public abstract class Config {
 
         for (Field field : config.getFields()) {
             EntryInfo info = new EntryInfo(field, modid);
-            if ((field.isAnnotationPresent(Entry.class) || field.isAnnotationPresent(Comment.class)) && !field.isAnnotationPresent(Server.class) && !field.isAnnotationPresent(Hidden.class) && FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT)
+            if ((field.isAnnotationPresent(Entry.class) || field.isAnnotationPresent(Comment.class))
+                    && !field.isAnnotationPresent(Server.class) && !field.isAnnotationPresent(Hidden.class)
+                    && FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT)
                 initClient(modid, field, info);
             if (field.isAnnotationPresent(Entry.class))
                 try {
@@ -216,26 +231,32 @@ public abstract class Config {
             else if (info.dataType == String.class || info.dataType == Identifier.class)
                 textField(info, String::length, null, Math.min(e.min(), 0), Math.max(e.max(), 1), true);
             else if (info.dataType == boolean.class) {
-                Function<Object, Text> func = value -> Text.translatable((Boolean) value ? "gui.yes" : "gui.no").formatted((Boolean) value ? Formatting.GREEN : Formatting.RED);
-                info.function = new AbstractMap.SimpleEntry<ButtonWidget.PressAction, Function<Object, Text>>(button -> {
-                    if (info.actionButton instanceof CheckboxWidget checkbox && checkbox.isChecked() == (Boolean) info.value) {
-                        checkbox.onPress();
-                        return;
-                    }
-                    info.setValue(!(Boolean) info.value);
-                    button.setMessage(func.apply(info.value));
-                }, func);
+                Function<Object, Text> func = value -> Text.translatable((Boolean) value ? "gui.yes" : "gui.no")
+                        .formatted((Boolean) value ? Formatting.GREEN : Formatting.RED);
+                info.function = new AbstractMap.SimpleEntry<ButtonWidget.PressAction, Function<Object, Text>>(
+                        button -> {
+                            if (info.actionButton instanceof CheckboxWidget checkbox
+                                    && checkbox.isChecked() == (Boolean) info.value) {
+                                checkbox.onPress();
+                                return;
+                            }
+                            info.setValue(!(Boolean) info.value);
+                            button.setMessage(func.apply(info.value));
+                        }, func);
             } else if (info.dataType.isEnum()) {
                 List<?> values = Arrays.asList(field.getType().getEnumConstants());
                 Function<Object, Text> func = value -> {
-                    String translationKey = modid + ".config.enum." + info.dataType.getSimpleName() + "." + info.toTemporaryValue();
-                    return I18n.hasTranslation(translationKey) ? Text.translatable(translationKey) : Text.literal(info.toTemporaryValue());
+                    String translationKey = modid + ".config.enum." + info.dataType.getSimpleName() + "."
+                            + info.toTemporaryValue();
+                    return I18n.hasTranslation(translationKey) ? Text.translatable(translationKey)
+                            : Text.literal(info.toTemporaryValue());
                 };
-                info.function = new AbstractMap.SimpleEntry<ButtonWidget.PressAction, Function<Object, Text>>(button -> {
-                    int index = values.indexOf(info.value) + 1;
-                    info.setValue(values.get(index >= values.size() ? 0 : index));
-                    button.setMessage(func.apply(info.value));
-                }, func);
+                info.function = new AbstractMap.SimpleEntry<ButtonWidget.PressAction, Function<Object, Text>>(
+                        button -> {
+                            int index = values.indexOf(info.value) + 1;
+                            info.setValue(values.get(index >= values.size() ? 0 : index));
+                            button.setMessage(func.apply(info.value));
+                        }, func);
             }
         }
         entries.put(key, info);
@@ -246,7 +267,8 @@ public abstract class Config {
         if (field.getType() == List.class)
             rawType = (Class<?>) ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0];
         try {
-            return (Class<?>) rawType.getField("TYPE").get(null); // Tries to get primitive types from non-primitives (e.g. Boolean -> boolean)
+            return (Class<?>) rawType.getField("TYPE").get(null); // Tries to get primitive types from non-primitives
+                                                                  // (e.g. Boolean -> boolean)
         } catch (NoSuchFieldException | IllegalAccessException ignored) {
             return rawType;
         }
@@ -254,15 +276,18 @@ public abstract class Config {
 
     public static Tooltip getTooltip(EntryInfo info, boolean isButton) {
         String key = info.modid + ".config." + info.fieldName + (!isButton ? ".label" : "") + ".tooltip";
-        return Tooltip.of(isButton && info.error != null ? info.error : I18n.hasTranslation(key) ? Text.translatable(key) : Text.empty());
+        return Tooltip.of(isButton && info.error != null ? info.error
+                : I18n.hasTranslation(key) ? Text.translatable(key) : Text.empty());
     }
 
-    private static void textField(EntryInfo info, Function<String, Number> f, Pattern pattern, double min, double max, boolean cast) {
+    private static void textField(EntryInfo info, Function<String, Number> f, Pattern pattern, double min, double max,
+            boolean cast) {
         boolean isNumber = pattern != null;
         info.function = (BiFunction<TextFieldWidget, ButtonWidget, Predicate<String>>) (t, b) -> s -> {
             s = s.trim();
-            if (!(s.isEmpty() || !isNumber || pattern.matcher(s).matches()) ||
-                    (info.dataType == Identifier.class && Identifier.validate(s).isError())) return false;
+            if (!(s.isEmpty() || !isNumber || pattern.matcher(s).matches())
+                    || (info.dataType == Identifier.class && Identifier.validate(s).isError()))
+                return false;
 
             Number value = 0;
             boolean inLimits = false;
@@ -274,9 +299,13 @@ public abstract class Config {
                     return false;
                 }
                 inLimits = value.doubleValue() >= min && value.doubleValue() <= max;
-                info.error = inLimits ? null : Text.literal(value.doubleValue() < min ?
-                        "§cMinimum " + (isNumber ? "value" : "length") + (cast ? " is " + (int) min : " is " + min) :
-                        "§cMaximum " + (isNumber ? "value" : "length") + (cast ? " is " + (int) max : " is " + max)).formatted(Formatting.RED);
+                info.error = inLimits ? null
+                        : Text.literal(value.doubleValue() < min
+                                ? "§cMinimum " + (isNumber ? "value" : "length")
+                                        + (cast ? " is " + (int) min : " is " + min)
+                                : "§cMaximum " + (isNumber ? "value" : "length")
+                                        + (cast ? " is " + (int) max : " is " + max))
+                                .formatted(Formatting.RED);
                 t.setTooltip(getTooltip(info, true));
             }
 
@@ -286,15 +315,20 @@ public abstract class Config {
             b.active = entries.values().stream().allMatch(e -> e.inLimits);
 
             if (inLimits) {
-                if (info.dataType == Identifier.class) info.setValue(Identifier.tryParse(s));
-                else info.setValue(isNumber ? value : s);
+                if (info.dataType == Identifier.class)
+                    info.setValue(Identifier.tryParse(s));
+                else
+                    info.setValue(isNumber ? value : s);
             }
 
             if (info.entry.isColor()) {
-                if (!s.contains("#")) s = '#' + s;
-                if (!HEXADECIMAL_ONLY.matcher(s).matches()) return false;
+                if (!s.contains("#"))
+                    s = '#' + s;
+                if (!HEXADECIMAL_ONLY.matcher(s).matches())
+                    return false;
                 try {
-                    info.actionButton.setMessage(Text.literal("⬛").setStyle(Style.EMPTY.withColor(Color.decode(info.tempValue).getRGB())));
+                    info.actionButton.setMessage(
+                            Text.literal("⬛").setStyle(Style.EMPTY.withColor(Color.decode(info.tempValue).getRGB())));
                 } catch (Exception ignored) {
                 }
             }
@@ -347,10 +381,12 @@ public abstract class Config {
                         Tab tab = new GridScreenTab(Text.translatable(name));
                         info.tab = tab;
                         tabs.put(name, tab);
-                    } else info.tab = tabs.get(name);
+                    } else
+                        info.tab = tabs.get(name);
                 }
             });
-            tabNavigation = TabNavigationWidget.builder(tabManager, this.width).tabs(tabs.values().toArray(new Tab[0])).build();
+            tabNavigation = TabNavigationWidget.builder(tabManager, this.width).tabs(tabs.values().toArray(new Tab[0]))
+                    .build();
             tabNavigation.selectTab(0, false);
             tabNavigation.init();
             prevTab = tabManager.getCurrentTab();
@@ -378,7 +414,8 @@ public abstract class Config {
                 list.setScrollY(0);
             }
             scrollProgress = list.getScrollY();
-            for (EntryInfo info : entries.values()) info.updateFieldValue();
+            for (EntryInfo info : entries.values())
+                info.updateFieldValue();
             updateButtons();
             if (reloadScreen) {
                 updateList();
@@ -394,7 +431,8 @@ public abstract class Config {
                             if (widget.isFocused() || widget.isHovered())
                                 widget.setTooltip(getTooltip(entry.info, true));
                         if (entry.buttons.get(1) instanceof ButtonWidget button)
-                            button.active = !Objects.equals(String.valueOf(entry.info.value), String.valueOf(entry.info.defaultValue)) && entry.info.conditionsMet;
+                            button.active = !Objects.equals(String.valueOf(entry.info.value),
+                                    String.valueOf(entry.info.defaultValue)) && entry.info.conditionsMet;
                     }
                 }
             }
@@ -402,7 +440,8 @@ public abstract class Config {
 
         @Override
         public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-            if (this.tabNavigation.trySwitchTabsWithKey(keyCode)) return true;
+            if (this.tabNavigation.trySwitchTabsWithKey(keyCode))
+                return true;
             return super.keyPressed(keyCode, scanCode, modifiers);
         }
 
@@ -430,11 +469,15 @@ public abstract class Config {
             super.init();
             tabNavigation.setWidth(this.width);
             tabNavigation.init();
-            if (tabs.size() > 1) this.addDrawableChild(tabNavigation);
+            if (tabs.size() > 1)
+                this.addDrawableChild(tabNavigation);
 
-            this.addDrawableChild(ButtonWidget.builder(ScreenTexts.CANCEL, button -> this.close()).dimensions(this.width / 2 - 154, this.height - 26, 150, 20).build());
+            this.addDrawableChild(ButtonWidget.builder(ScreenTexts.CANCEL, button -> this.close())
+                    .dimensions(this.width / 2 - 154, this.height - 26, 150, 20).build());
             done = this.addDrawableChild(ButtonWidget.builder(ScreenTexts.DONE, (button) -> {
-                for (EntryInfo info : entries.values()) if (info.modid.equals(modid)) info.updateFieldValue();
+                for (EntryInfo info : entries.values())
+                    if (info.modid.equals(modid))
+                        info.updateFieldValue();
                 write(modid);
                 cleanup();
                 Objects.requireNonNull(client).setScreen(parent);
@@ -443,7 +486,8 @@ public abstract class Config {
             this.list = new ConfigListWidget(this.client, this.width, this.height - 57, 24, 25);
             this.addSelectableChild(this.list);
             fillList();
-            if (tabs.size() > 1) list.renderHeaderSeparator = false;
+            if (tabs.size() > 1)
+                list.renderHeaderSeparator = false;
         }
 
         public void updateList() {
@@ -458,16 +502,20 @@ public abstract class Config {
                     for (Condition condition : info.conditions) {
                         visibleButLocked |= condition.visibleButLocked();
                     }
-                    if (!visibleButLocked) continue;
+                    if (!visibleButLocked)
+                        continue;
                 }
                 if (info.modid.equals(modid) && (info.tab == null || info.tab == tabManager.getCurrentTab())) {
-                    Text name = Objects.requireNonNullElseGet(info.name, () -> Text.translatable(translationPrefix + info.fieldName));
-                    TextIconButtonWidget resetButton = TextIconButtonWidget.builder(Text.translatable("controls.reset"), (button -> {
-                        info.value = info.defaultValue;
-                        info.listIndex = 0;
-                        info.tempValue = info.toTemporaryValue();
-                        updateList();
-                    }), true).texture(Identifier.of("midnightlib", "icon/reset"), 12, 12).dimension(20, 20).build();
+                    Text name = Objects.requireNonNullElseGet(info.name,
+                            () -> Text.translatable(translationPrefix + info.fieldName));
+                    TextIconButtonWidget resetButton = TextIconButtonWidget
+                            .builder(Text.translatable("controls.reset"), (button -> {
+                                info.value = info.defaultValue;
+                                info.listIndex = 0;
+                                info.tempValue = info.toTemporaryValue();
+                                updateList();
+                            }), true).texture(Identifier.of("midnightlib", "icon/reset"), 12, 12).dimension(20, 20)
+                            .build();
                     resetButton.setPosition(width - 205 + 150 + 25, 0);
 
                     if (info.function != null) {
@@ -476,83 +524,107 @@ public abstract class Config {
                         if (info.function instanceof Map.Entry) { // Enums & booleans
                             var values = (Map.Entry<ButtonWidget.PressAction, Function<Object, Text>>) info.function;
                             if (info.dataType.isEnum())
-                                values.setValue(value -> Text.translatable(translationPrefix + "enum." + info.dataType.getSimpleName() + "." + info.value.toString()));
-                            widget = ButtonWidget.builder(values.getValue().apply(info.value), values.getKey()).dimensions(width - 185, 0, 150, 20).tooltip(getTooltip(info, true)).build();
+                                values.setValue(value -> Text.translatable(translationPrefix + "enum."
+                                        + info.dataType.getSimpleName() + "." + info.value.toString()));
+                            widget = ButtonWidget.builder(values.getValue().apply(info.value), values.getKey())
+                                    .dimensions(width - 185, 0, 150, 20).tooltip(getTooltip(info, true)).build();
                             if (info.dataType == boolean.class)
-                                info.actionButton = CheckboxWidget.builder(Text.empty(), textRenderer).callback((checkbox, checked) -> values.getKey().onPress((ButtonWidget) widget)).checked((Boolean) info.value).pos(widget.getX(), 1).build();
+                                info.actionButton = CheckboxWidget.builder(Text.empty(), textRenderer)
+                                        .callback((checkbox, checked) -> values.getKey().onPress((ButtonWidget) widget))
+                                        .checked((Boolean) info.value).pos(widget.getX(), 1).build();
                         } else if (e.isSlider())
-                            widget = new MidnightSliderWidget(width - 185, 0, 150, 20, Text.of(info.tempValue), (Double.parseDouble(info.tempValue) - e.min()) / (e.max() - e.min()), info);
-                        else widget = new TextFieldWidget(textRenderer, width - 185, 0, 150, 20, Text.empty());
+                            widget = new MidnightSliderWidget(width - 185, 0, 150, 20, Text.of(info.tempValue),
+                                    (Double.parseDouble(info.tempValue) - e.min()) / (e.max() - e.min()), info);
+                        else
+                            widget = new TextFieldWidget(textRenderer, width - 185, 0, 150, 20, Text.empty());
                         if (widget instanceof TextFieldWidget textField) {
                             textField.setMaxLength(e.width());
                             textField.setText(info.tempValue);
-                            Predicate<String> processor = ((BiFunction<TextFieldWidget, ButtonWidget, Predicate<String>>) info.function).apply(textField, done);
+                            Predicate<String> processor = ((BiFunction<TextFieldWidget, ButtonWidget, Predicate<String>>) info.function)
+                                    .apply(textField, done);
                             textField.setTextPredicate(processor);
                         }
                         widget.setTooltip(getTooltip(info, true));
 
                         ButtonWidget cycleButton = null;
                         if (info.field.getType() == List.class) {
-                            cycleButton = ButtonWidget.builder(Text.literal(String.valueOf(info.listIndex)).formatted(Formatting.GOLD), (button -> {
-                                var values = (List<?>) info.value;
-                                values.remove("");
-                                info.listIndex = info.listIndex + 1;
-                                if (info.listIndex > values.size()) info.listIndex = 0;
-                                info.tempValue = info.toTemporaryValue();
-                                if (info.listIndex == values.size()) info.tempValue = "";
-                                updateList();
-                            })).dimensions(width - 185, 0, 20, 20).build();
+                            cycleButton = ButtonWidget
+                                    .builder(Text.literal(String.valueOf(info.listIndex)).formatted(Formatting.GOLD),
+                                            (button -> {
+                                                var values = (List<?>) info.value;
+                                                values.remove("");
+                                                info.listIndex = info.listIndex + 1;
+                                                if (info.listIndex > values.size())
+                                                    info.listIndex = 0;
+                                                info.tempValue = info.toTemporaryValue();
+                                                if (info.listIndex == values.size())
+                                                    info.tempValue = "";
+                                                updateList();
+                                            }))
+                                    .dimensions(width - 185, 0, 20, 20).build();
                         }
                         if (e.isColor()) {
-                            ButtonWidget colorButton = ButtonWidget.builder(Text.literal("⬛"),
-                                    button -> new Thread(() -> {
-                                        Color newColor = JColorChooser.showDialog(null, Text.translatable("config.colorChooser.title").getString(), Color.decode(!Objects.equals(info.tempValue, "") ? info.tempValue : "#FFFFFF"));
+                            ButtonWidget colorButton = ButtonWidget
+                                    .builder(Text.literal("⬛"), button -> new Thread(() -> {
+                                        Color newColor = JColorChooser.showDialog(null,
+                                                Text.translatable("config.colorChooser.title").getString(),
+                                                Color.decode(!Objects.equals(info.tempValue, "") ? info.tempValue
+                                                        : "#FFFFFF"));
                                         if (newColor != null) {
                                             info.setValue("#" + Integer.toHexString(newColor.getRGB()).substring(2));
                                             updateList();
                                         }
-                                    }).start()
-                            ).dimensions(width - 185, 0, 20, 20).build();
+                                    }).start()).dimensions(width - 185, 0, 20, 20).build();
                             try {
-                                colorButton.setMessage(Text.literal("⬛").setStyle(Style.EMPTY.withColor(Color.decode(info.tempValue).getRGB())));
+                                colorButton.setMessage(Text.literal("⬛")
+                                        .setStyle(Style.EMPTY.withColor(Color.decode(info.tempValue).getRGB())));
                             } catch (Exception ignored) {
                             }
                             info.actionButton = colorButton;
                         } else if (e.selectionMode() > -1) {
-                            ButtonWidget explorerButton = TextIconButtonWidget.builder(Text.empty(),
-                                    button -> new Thread(() -> {
+                            ButtonWidget explorerButton = TextIconButtonWidget
+                                    .builder(Text.empty(), button -> new Thread(() -> {
                                         JFileChooser fileChooser = new JFileChooser(info.tempValue);
                                         fileChooser.setFileSelectionMode(e.selectionMode());
                                         fileChooser.setDialogType(e.fileChooserType());
-                                        fileChooser.setDialogTitle(Text.translatable(translationPrefix + info.fieldName + ".fileChooser").getString());
-                                        if ((e.selectionMode() == JFileChooser.FILES_ONLY || e.selectionMode() == JFileChooser.FILES_AND_DIRECTORIES) && Arrays.stream(e.fileExtensions()).noneMatch("*"::equals))
-                                            fileChooser.setFileFilter(new FileNameExtensionFilter(
-                                                    Text.translatable(translationPrefix + info.fieldName + ".fileFilter").getString(), e.fileExtensions()));
+                                        fileChooser.setDialogTitle(
+                                                Text.translatable(translationPrefix + info.fieldName + ".fileChooser")
+                                                        .getString());
+                                        if ((e.selectionMode() == JFileChooser.FILES_ONLY
+                                                || e.selectionMode() == JFileChooser.FILES_AND_DIRECTORIES)
+                                                && Arrays.stream(e.fileExtensions()).noneMatch("*"::equals))
+                                            fileChooser.setFileFilter(new FileNameExtensionFilter(Text
+                                                    .translatable(translationPrefix + info.fieldName + ".fileFilter")
+                                                    .getString(), e.fileExtensions()));
                                         if (fileChooser.showDialog(null, null) == JFileChooser.APPROVE_OPTION) {
                                             info.setValue(fileChooser.getSelectedFile().getAbsolutePath());
                                             updateList();
                                         }
-                                    }).start(), true
-                            ).texture(Identifier.of("midnightlib", "icon/explorer"), 12, 12).dimension(20, 20).build();
+                                    }).start(), true).texture(Identifier.of("midnightlib", "icon/explorer"), 12, 12)
+                                    .dimension(20, 20).build();
                             explorerButton.setPosition(width - 185, 0);
                             info.actionButton = explorerButton;
                         }
                         List<ClickableWidget> widgets = Lists.newArrayList(widget, resetButton);
                         if (info.actionButton != null) {
-                            if (IS_SYSTEM_MAC) info.actionButton.active = false;
+                            if (IS_SYSTEM_MAC)
+                                info.actionButton.active = false;
                             widget.setWidth(widget.getWidth() - 22);
                             widget.setX(widget.getX() + 22);
                             widgets.add(info.actionButton);
                         }
                         if (cycleButton != null) {
-                            if (info.actionButton != null) info.actionButton.setX(info.actionButton.getX() + 22);
+                            if (info.actionButton != null)
+                                info.actionButton.setX(info.actionButton.getX() + 22);
                             widget.setWidth(widget.getWidth() - 22);
                             widget.setX(widget.getX() + 22);
                             widgets.add(cycleButton);
                         }
-                        if (!info.conditionsMet) widgets.forEach(w -> w.active = false);
+                        if (!info.conditionsMet)
+                            widgets.forEach(w -> w.active = false);
                         this.list.addButton(widgets, name, info);
-                    } else this.list.addButton(List.of(), name, info);
+                    } else
+                        this.list.addButton(List.of(), name, info);
                 }
                 list.setScrollY(scrollProgress);
                 updateButtons();
@@ -563,7 +635,8 @@ public abstract class Config {
         public void render(DrawContext context, int mouseX, int mouseY, float delta) {
             super.render(context, mouseX, mouseY, delta);
             this.list.render(context, mouseX, mouseY, delta);
-            if (tabs.size() < 2) context.drawCenteredTextWithShadow(textRenderer, title, width / 2, 10, 0xFFFFFF);
+            if (tabs.size() < 2)
+                context.drawCenteredTextWithShadow(textRenderer, title, width / 2, 10, 0xFFFFFF);
         }
     }
 
@@ -582,9 +655,13 @@ public abstract class Config {
 
         @Override
         protected void drawHeaderAndFooterSeparators(DrawContext context) {
-            if (renderHeaderSeparator) super.drawHeaderAndFooterSeparators(context);
+            if (renderHeaderSeparator)
+                super.drawHeaderAndFooterSeparators(context);
             else
-                context.drawTexture(RenderLayer::getGuiTextured, this.client.world == null ? Screen.FOOTER_SEPARATOR_TEXTURE : Screen.INWORLD_FOOTER_SEPARATOR_TEXTURE, this.getX(), this.getBottom(), 0, 0, this.getWidth(), 2, 32, 2);
+                context.drawTexture(RenderLayer::getGuiTextured,
+                        this.client.world == null ? Screen.FOOTER_SEPARATOR_TEXTURE
+                                : Screen.INWORLD_FOOTER_SEPARATOR_TEXTURE,
+                        this.getX(), this.getBottom(), 0, 0, this.getWidth(), 2, 32, 2);
         }
 
         public void addButton(List<ClickableWidget> buttons, Text text, EntryInfo info) {
@@ -613,17 +690,21 @@ public abstract class Config {
             this.buttons = buttons;
             this.text = text;
             this.info = info;
-            if (info != null && info.comment != null) this.centered = info.comment.centered();
+            if (info != null && info.comment != null)
+                this.centered = info.comment.centered();
             int scaledWidth = MinecraftClient.getInstance().getWindow().getScaledWidth();
 
             if (text != null && (!text.getString().contains("spacer") || !buttons.isEmpty())) {
-                title = new MultilineTextWidget((centered) ? (scaledWidth / 2 - (textRenderer.getWidth(text) / 2)) : 12, 0, Text.of(text), textRenderer);
-                if (info != null) title.setTooltip(getTooltip(info, false));
+                title = new MultilineTextWidget((centered) ? (scaledWidth / 2 - (textRenderer.getWidth(text) / 2)) : 12,
+                        0, Text.of(text), textRenderer);
+                if (info != null)
+                    title.setTooltip(getTooltip(info, false));
                 title.setMaxWidth(buttons.size() > 1 ? buttons.get(1).getX() - 24 : scaledWidth - 24);
             }
         }
 
-        public void render(DrawContext context, int index, int y, int x, int entryWidth, int entryHeight, int mouseX, int mouseY, boolean hovered, float tickDelta) {
+        public void render(DrawContext context, int index, int y, int x, int entryWidth, int entryHeight, int mouseX,
+                int mouseY, boolean hovered, float tickDelta) {
             buttons.forEach(b -> {
                 b.setY(y + (b instanceof CheckboxWidget ? 1 : 0));
                 b.render(context, mouseX, mouseY, tickDelta);
@@ -632,14 +713,21 @@ public abstract class Config {
                 title.setY(y + 9);
                 title.renderWidget(context, mouseX, mouseY, tickDelta);
 
-                boolean tooltipVisible = mouseX >= title.getX() && mouseX < title.getWidth() + title.getX() && mouseY >= title.getY() && mouseY < title.getHeight() + title.getY();
+                boolean tooltipVisible = mouseX >= title.getX() && mouseX < title.getWidth() + title.getX()
+                        && mouseY >= title.getY() && mouseY < title.getHeight() + title.getY();
                 if (tooltipVisible && title.getTooltip() != null)
-                    context.drawOrderedTooltip(textRenderer, title.getTooltip().getLines(MinecraftClient.getInstance()), mouseX, mouseY);
+                    context.drawOrderedTooltip(textRenderer, title.getTooltip().getLines(MinecraftClient.getInstance()),
+                            mouseX, mouseY);
 
-                if (info.entry != null && !this.buttons.isEmpty() && this.buttons.getFirst() instanceof ClickableWidget widget) {
+                if (info.entry != null && !this.buttons.isEmpty()
+                        && this.buttons.getFirst() instanceof ClickableWidget widget) {
                     int idMode = this.info.entry.idMode();
                     if (idMode != -1)
-                        context.drawItem(idMode == 0 ? Registries.ITEM.get(Identifier.tryParse(this.info.tempValue)).getDefaultStack() : Registries.BLOCK.get(Identifier.tryParse(this.info.tempValue)).asItem().getDefaultStack(), widget.getX() + widget.getWidth() - 18, y + 2);
+                        context.drawItem(idMode == 0
+                                ? Registries.ITEM.get(Identifier.tryParse(this.info.tempValue)).getDefaultStack()
+                                : Registries.BLOCK.get(Identifier.tryParse(this.info.tempValue)).asItem()
+                                        .getDefaultStack(),
+                                widget.getX() + widget.getWidth() - 18, y + 2);
                 }
             }
         }
@@ -680,9 +768,11 @@ public abstract class Config {
             if (info.dataType == int.class)
                 info.setValue(((Number) (e.min() + value * (e.max() - e.min()))).intValue());
             else if (info.dataType == double.class)
-                info.setValue(Math.round((e.min() + value * (e.max() - e.min())) * (double) e.precision()) / (double) e.precision());
+                info.setValue(Math.round((e.min() + value * (e.max() - e.min())) * (double) e.precision())
+                        / (double) e.precision());
             else if (info.dataType == float.class)
-                info.setValue(Math.round((e.min() + value * (e.max() - e.min())) * (float) e.precision()) / (float) e.precision());
+                info.setValue(Math.round((e.min() + value * (e.max() - e.min())) * (float) e.precision())
+                        / (float) e.precision());
         }
     }
 
@@ -698,24 +788,41 @@ public abstract class Config {
 
     /**
      * Entry Annotation<br>
-     * - <b>width</b>: The maximum character length of the {@link String}, {@link Identifier} or String/Identifier {@link List<>} field<br>
-     * - <b>min</b>: The minimum value of the <code>int</code>, <code>float</code> or <code>double</code> field<br>
-     * - <b>max</b>: The maximum value of the <code>int</code>, <code>float</code> or <code>double</code> field<br>
-     * - <b>name</b>: Will be used instead of the default translation key, if not empty<br>
-     * - <b>selectionMode</b>: The selection mode of the file picker button for {@link String} fields,
-     * -1 for none, {@link JFileChooser#FILES_ONLY} for files, {@link JFileChooser#DIRECTORIES_ONLY} for directories,
-     * {@link JFileChooser#FILES_AND_DIRECTORIES} for both (default: -1). Remember to set the translation key
-     * <code>[modid].config.[fieldName].fileChooser.title</code> for the file picker dialog title<br>
-     * - <b>fileChooserType</b>: The type of the file picker button for {@link String} fields,
-     * can be {@link JFileChooser#OPEN_DIALOG} or {@link JFileChooser#SAVE_DIALOG} (default: {@link JFileChooser#OPEN_DIALOG}).
-     * Remember to set the translation key <code>[modid].config.[fieldName].fileFilter.description</code> for the file filter description
+     * - <b>width</b>: The maximum character length of the {@link String},
+     * {@link Identifier} or String/Identifier {@link List<>} field<br>
+     * - <b>min</b>: The minimum value of the <code>int</code>, <code>float</code>
+     * or <code>double</code> field<br>
+     * - <b>max</b>: The maximum value of the <code>int</code>, <code>float</code>
+     * or <code>double</code> field<br>
+     * - <b>name</b>: Will be used instead of the default translation key, if not
+     * empty<br>
+     * - <b>selectionMode</b>: The selection mode of the file picker button for
+     * {@link String} fields,
+     * -1 for none, {@link JFileChooser#FILES_ONLY} for files,
+     * {@link JFileChooser#DIRECTORIES_ONLY} for directories,
+     * {@link JFileChooser#FILES_AND_DIRECTORIES} for both (default: -1). Remember
+     * to set the translation key
+     * <code>[modid].config.[fieldName].fileChooser.title</code> for the file picker
+     * dialog title<br>
+     * - <b>fileChooserType</b>: The type of the file picker button for
+     * {@link String} fields,
+     * can be {@link JFileChooser#OPEN_DIALOG} or {@link JFileChooser#SAVE_DIALOG}
+     * (default: {@link JFileChooser#OPEN_DIALOG}).
+     * Remember to set the translation key
+     * <code>[modid].config.[fieldName].fileFilter.description</code> for the file
+     * filter description
      * if <code>"*"</code> is not used as file extension<br>
-     * - <b>fileExtensions</b>: The file extensions for the file picker button for {@link String} fields (default: <code>{"*"}</code>),
-     * only works if selectionMode is {@link JFileChooser#FILES_ONLY} or {@link JFileChooser#FILES_AND_DIRECTORIES}<br>
-     * - <b>isColor</b>: If the field is a hexadecimal color code (default: false)<br>
+     * - <b>fileExtensions</b>: The file extensions for the file picker button for
+     * {@link String} fields (default: <code>{"*"}</code>),
+     * only works if selectionMode is {@link JFileChooser#FILES_ONLY} or
+     * {@link JFileChooser#FILES_AND_DIRECTORIES}<br>
+     * - <b>isColor</b>: If the field is a hexadecimal color code (default:
+     * false)<br>
      * - <b>isSlider</b>: If the field is a slider (default: false)<br>
-     * - <b>precision</b>: The precision of the <code>float</code> or <code>double</code> field (default: 100)<br>
-     * - <b>category</b>: The category of the field in the config screen (default: "default")<br>
+     * - <b>precision</b>: The precision of the <code>float</code> or
+     * <code>double</code> field (default: 100)<br>
+     * - <b>category</b>: The category of the field in the config screen (default:
+     * "default")<br>
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
@@ -728,13 +835,13 @@ public abstract class Config {
 
         String name() default "";
 
-        int selectionMode() default -1;        // -1 for none, 0 for file, 1 for directory, 2 for both
+        int selectionMode() default -1; // -1 for none, 0 for file, 1 for directory, 2 for both
 
         int fileChooserType() default JFileChooser.OPEN_DIALOG;
 
-        String[] fileExtensions() default {"*"};
+        String[] fileExtensions() default { "*" };
 
-        int idMode() default -1;               // -1 for none, 0 for item, 1 for block
+        int idMode() default -1; // -1 for none, 0 for item, 1 for block
 
         boolean isColor() default false;
 
@@ -744,7 +851,8 @@ public abstract class Config {
 
         String category() default "default";
 
-        @Deprecated String requiredMod() default "";
+        @Deprecated
+        String requiredMod() default "";
     }
 
     @Retention(RetentionPolicy.RUNTIME)
@@ -753,7 +861,8 @@ public abstract class Config {
     }
 
     /**
-     * Hides the entry in config screens, but still makes it accessible through the command {@code /Config MOD_ID ENTRY} and directly editing the config file.
+     * Hides the entry in config screens, but still makes it accessible through the
+     * command {@code /Config MOD_ID ENTRY} and directly editing the config file.
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
@@ -773,9 +882,12 @@ public abstract class Config {
     /**
      * Comment Annotation<br>
      * - <b>{@link Comment#centered()}</b>: If the comment should be centered<br>
-     * - <b>{@link Comment#category()}</b>: The category of the comment in the config screen<br>
-     * - <b>{@link Comment#name()}</b>: Will be used instead of the default translation key, if not empty<br>
-     * - <b>{@link Comment#url()}</b>: The url of the comment should link to in the config screen (none if left empty)<br>
+     * - <b>{@link Comment#category()}</b>: The category of the comment in the
+     * config screen<br>
+     * - <b>{@link Comment#name()}</b>: Will be used instead of the default
+     * translation key, if not empty<br>
+     * - <b>{@link Comment#url()}</b>: The url of the comment should link to in the
+     * config screen (none if left empty)<br>
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
@@ -788,16 +900,24 @@ public abstract class Config {
 
         String url() default "";
 
-        @Deprecated String requiredMod() default "";
+        @Deprecated
+        String requiredMod() default "";
     }
 
     /**
      * Condition Annotation<br>
-     * - <b>{@link Condition#requiredModId()}</b>: The id of a mod that is required to be loaded.<br>
-     * - <b>{@link Condition#requiredOption()}</b>: The {@link Field} which will be used to check the condition. Can also access options of other MidnightLib mods ("modid:optionName").<br>
-     * - <b>{@link Condition#requiredValue()}</b>: The value that {@link Condition#requiredOption()} should be set to for the condition to be met.<br>
-     * - <b>{@link Condition#visibleButLocked()}</b>: The behaviour to take when {@link Condition#requiredModId} is not loaded
-     * or {@link Condition#requiredOption()} returns a value that is not {@link Condition#requiredValue()}.<br>
+     * - <b>{@link Condition#requiredModId()}</b>: The id of a mod that is required
+     * to be loaded.<br>
+     * - <b>{@link Condition#requiredOption()}</b>: The {@link Field} which will be
+     * used to check the condition. Can also access options of other MidnightLib
+     * mods ("modid:optionName").<br>
+     * - <b>{@link Condition#requiredValue()}</b>: The value that
+     * {@link Condition#requiredOption()} should be set to for the condition to be
+     * met.<br>
+     * - <b>{@link Condition#visibleButLocked()}</b>: The behaviour to take when
+     * {@link Condition#requiredModId} is not loaded
+     * or {@link Condition#requiredOption()} returns a value that is not
+     * {@link Condition#requiredValue()}.<br>
      * <code>true</code> – Option is visible, but not editable<br>
      * <code>false</code> – Option is completely hidden
      */
@@ -809,7 +929,7 @@ public abstract class Config {
 
         String requiredOption() default "";
 
-        String[] requiredValue() default {"true"};
+        String[] requiredValue() default { "true" };
 
         boolean visibleButLocked() default false;
     }

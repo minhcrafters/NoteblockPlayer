@@ -16,10 +16,12 @@ public class TxtConverter {
         for (int lineNum = 1; lineNum <= lines.length; lineNum++) {
             String line = lines[lineNum - 1].strip();
 
-            if (line.startsWith("#")) continue;
+            if (line.startsWith("#"))
+                continue;
 
             String[] split = line.split(":");
-            if (split.length != 3) throw new IOException("Invalid format at line " + lineNum);
+            if (split.length != 3)
+                throw new IOException("Invalid format at line " + lineNum);
             int tick, pitch, instrument;
             try {
                 tick = Integer.parseInt(split[0]);

@@ -9,7 +9,7 @@ public class UseVanillaCommands extends Command {
     }
 
     public String[] getAliases() {
-        return new String[]{"vanilla", "useVanilla", "vanillaCommands"};
+        return new String[] { "vanilla", "useVanilla", "vanillaCommands" };
     }
 
     public String[] getSyntax() {
@@ -25,7 +25,7 @@ public class UseVanillaCommands extends Command {
             NoteblockPlayer.getConfig().creativeCommand = "gamemode creative";
             NoteblockPlayer.getConfig().survivalCommand = "gamemode survival";
             NoteblockPlayer.addChatMessage("§6Now using vanilla gamemode commands");
-            
+
             return true;
         } else {
             return false;

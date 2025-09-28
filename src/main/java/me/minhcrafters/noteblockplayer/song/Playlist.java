@@ -55,6 +55,13 @@ public class Playlist {
             for (Path file : songFiles) {
                 SongLoaderThread slt = new SongLoaderThread(file);
                 slt.start();
+                try {
+                    slt.join();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    songsFailedToLoad.add(file.getFileName().toString());
+                    continue;
+                }
                 if (slt.exception != null) {
                     songsFailedToLoad.add(file.getFileName().toString());
                 } else {
@@ -92,7 +99,8 @@ public class Playlist {
     }
 
     public Song getNext() {
-        if (songs.isEmpty()) return null;
+        if (songs.isEmpty())
+            return null;
 
         if (songNumber >= songs.size()) {
             if (loop) {
@@ -155,8 +163,9 @@ public class Playlist {
 
     public static Stream<Path> getSongFiles(Path directory) {
         try {
-            Stream<Path> files = Files.list(directory);
-            return files.filter(file -> !file.getFileName().toString().equals(INDEX_FILE_NAME));
+            try (Stream<Path> files = Files.list(directory)) {
+                return files.filter(file -> !file.getFileName().toString().equals(INDEX_FILE_NAME));
+            }
         } catch (IOException e) {
             return null;
         }

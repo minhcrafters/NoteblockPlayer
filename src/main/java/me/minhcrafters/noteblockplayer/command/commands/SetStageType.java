@@ -17,11 +17,11 @@ public class SetStageType extends Command {
     }
 
     public String[] getAliases() {
-        return new String[]{"setStage", "stageType"};
+        return new String[] { "setStage", "stageType" };
     }
 
     public String[] getSyntax() {
-        return new String[]{"<DEFAULT | WIDE | SPHERICAL>"};
+        return new String[] { "<DEFAULT | WIDE | SPHERICAL>" };
     }
 
     public String getDescription() {
@@ -34,7 +34,7 @@ public class SetStageType extends Command {
                 Stage.StageType stageType = Stage.StageType.valueOf(args.toUpperCase(Locale.ROOT));
                 NoteblockPlayer.getConfig().stageType = stageType;
                 NoteblockPlayer.addChatMessage("§6Set stage type to §3" + stageType.name());
-                
+
             } catch (IllegalArgumentException e) {
                 NoteblockPlayer.addChatMessage("§cInvalid stage type");
             }
@@ -46,7 +46,8 @@ public class SetStageType extends Command {
 
     public CompletableFuture<Suggestions> getSuggestions(String args, SuggestionsBuilder suggestionsBuilder) {
         if (!args.contains(" ")) {
-            return CommandSource.suggestMatching(Arrays.stream(Stage.StageType.values()).map(Stage.StageType::name), suggestionsBuilder);
+            return CommandSource.suggestMatching(Arrays.stream(Stage.StageType.values()).map(Stage.StageType::name),
+                    suggestionsBuilder);
         } else {
             return null;
         }

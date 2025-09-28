@@ -30,9 +30,13 @@ public class MinecraftClientMixin {
 	@Shadow
 	private int itemUseCooldown;
 
+	@Shadow
+	private boolean paused;
+
 	@Inject(at = @At("HEAD"), method = "render(Z)V")
 	public void onRender(boolean tick, CallbackInfo ci) {
-		if (NoteblockPlayer.mc.world != null && NoteblockPlayer.mc.player != null && NoteblockPlayer.mc.interactionManager != null) {
+		if (NoteblockPlayer.mc.world != null && NoteblockPlayer.mc.player != null
+				&& NoteblockPlayer.mc.interactionManager != null) {
 			SongHandler.getInstance().onUpdate(false);
 		} else {
 			SongHandler.getInstance().onNotIngame();
@@ -41,8 +45,12 @@ public class MinecraftClientMixin {
 
 	@Inject(at = @At("HEAD"), method = "tick()V")
 	public void onTick(CallbackInfo ci) {
-		if (NoteblockPlayer.mc.world != null && NoteblockPlayer.mc.player != null && NoteblockPlayer.mc.interactionManager != null) {
+		if (NoteblockPlayer.mc.world != null && NoteblockPlayer.mc.player != null
+				&& NoteblockPlayer.mc.interactionManager != null) {
 			SongHandler.getInstance().onUpdate(true);
+			if (NoteblockPlayer.mc.isInSingleplayer()) {
+				SongHandler.getInstance().handleGamePause(paused);
+			}
 		}
 		ProgressDisplay.getInstance().tick();
 	}
@@ -51,14 +59,13 @@ public class MinecraftClientMixin {
 	private void onDoItemUse(CallbackInfo ci) {
 		if (crosshairTarget != null) {
 			if (crosshairTarget.getType() == HitResult.Type.ENTITY) {
-				EntityHitResult entityHitResult = (EntityHitResult)this.crosshairTarget;
+				EntityHitResult entityHitResult = (EntityHitResult) this.crosshairTarget;
 				Entity entity = entityHitResult.getEntity();
 				if (entity instanceof ItemFrameEntity || entity instanceof GlowItemFrameEntity) {
 					return;
 				}
-			}
-			else if (crosshairTarget.getType() == HitResult.Type.BLOCK) {
-				BlockHitResult blockHitResult = (BlockHitResult)this.crosshairTarget;
+			} else if (crosshairTarget.getType() == HitResult.Type.BLOCK) {
+				BlockHitResult blockHitResult = (BlockHitResult) this.crosshairTarget;
 				BlockEntity blockEntity = NoteblockPlayer.mc.world.getBlockEntity(blockHitResult.getBlockPos());
 				if (blockEntity instanceof LockableContainerBlockEntity) {
 					return;

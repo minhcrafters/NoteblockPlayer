@@ -15,13 +15,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ClientPlayNetworkHandler.class)
 public class ClientPlayNetworkHandlerMixin {
-//    @Inject(at = @At("HEAD"), method = "sendChatMessage(Ljava/lang/String;)V", cancellable = true)
-//    private void onSendChatMessage(String content, CallbackInfo ci) {
-//        boolean isCommand = CommandManager.processChatMessage(content);
-//        if (isCommand) {
-//            ci.cancel();
-//        }
-//    }
+    // @Inject(at = @At("HEAD"), method = "sendChatMessage(Ljava/lang/String;)V",
+    // cancellable = true)
+    // private void onSendChatMessage(String content, CallbackInfo ci) {
+    // boolean isCommand = CommandManager.processChatMessage(content);
+    // if (isCommand) {
+    // ci.cancel();
+    // }
+    // }
 
     @Inject(at = @At("TAIL"), method = "onGameJoin(Lnet/minecraft/network/packet/s2c/play/GameJoinS2CPacket;)V")
     public void onOnGameJoin(GameJoinS2CPacket packet, CallbackInfo ci) {
@@ -45,7 +46,8 @@ public class ClientPlayNetworkHandlerMixin {
             double dx;
             double dy;
             double dz;
-            // Relative position sets need to be handled differently because client-side position doesn't match server-side position
+            // Relative position sets need to be handled differently because client-side
+            // position doesn't match server-side position
             if (xrel) {
                 dx = packet.change().position().getX();
             } else {
@@ -69,10 +71,10 @@ public class ClientPlayNetworkHandlerMixin {
                             xrel ? stageOriginBottomCenter.getX() + dz : player.getX(),
                             yrel ? stageOriginBottomCenter.getY() + dy : player.getY(),
                             zrel ? stageOriginBottomCenter.getZ() + dz : player.getZ(),
-                            player.getYaw(), player.getPitch()
-                    );
+                            player.getYaw(), player.getPitch());
                 }
-                NoteblockPlayer.addChatMessage("§6Stopped playing/building because the server moved the player too far from the stage!");
+                NoteblockPlayer.addChatMessage(
+                        "§6Stopped playing/building because the server moved the player too far from the stage!");
                 SongHandler.getInstance().restoreStateAndReset(false);
             } else {
                 lastStage.movePlayerToStagePosition();

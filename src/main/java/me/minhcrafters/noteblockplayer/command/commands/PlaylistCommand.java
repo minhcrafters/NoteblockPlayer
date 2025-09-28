@@ -3,15 +3,19 @@ package me.minhcrafters.noteblockplayer.command.commands;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import me.minhcrafters.noteblockplayer.NoteblockPlayer;
+import me.minhcrafters.noteblockplayer.utils.Paginator;
 import me.minhcrafters.noteblockplayer.utils.Utils;
 import me.minhcrafters.noteblockplayer.command.Command;
+import me.minhcrafters.noteblockplayer.command.CommandManager;
 import me.minhcrafters.noteblockplayer.song.SongHandler;
 import me.minhcrafters.noteblockplayer.song.Playlist;
 import net.minecraft.command.CommandSource;
+import net.minecraft.text.Text;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -26,10 +30,10 @@ public class PlaylistCommand extends Command {
     }
 
     public String[] getSyntax() {
-        return new String[]{
+        return new String[] {
                 "play <playlist>",
                 "create <playlist>",
-                "list [<playlist>]",
+                "list [<playlist>] [<page>]",
                 "delete <playlist> <song>",
                 "addSong <playlist> <song>",
                 "removeSong <playlist> <song>",
@@ -46,7 +50,8 @@ public class PlaylistCommand extends Command {
     public boolean processCommand(String args) {
         String[] split = args.split(" ");
 
-        if (split.length < 1) return false;
+        if (split.length < 1)
+            return false;
 
         try {
             Path playlistDir = null;
@@ -55,7 +60,8 @@ public class PlaylistCommand extends Command {
             }
             switch (split[0].toLowerCase(Locale.ROOT)) {
                 case "play": {
-                    if (split.length != 2) return false;
+                    if (split.length != 2)
+                        return false;
                     if (!Files.exists(playlistDir)) {
                         NoteblockPlayer.addChatMessage("§cPlaylist does not exist");
                         return true;
@@ -68,20 +74,23 @@ public class PlaylistCommand extends Command {
                         NoteblockPlayer.addChatMessage("§cCannot have spaces in playlist name");
                         return true;
                     }
-                    if (split.length != 2) return false;
+                    if (split.length != 2)
+                        return false;
                     Playlist.createPlaylist(split[1]);
                     NoteblockPlayer.addChatMessage(String.format("§6Created playlist §3%s", split[1]));
                     return true;
                 }
                 case "delete": {
-                    if (split.length != 2) return false;
+                    if (split.length != 2)
+                        return false;
                     Playlist.deletePlaylist(playlistDir);
                     NoteblockPlayer.addChatMessage(String.format("§6Deleted playlist §3%s", split[1]));
                     return true;
                 }
                 case "list": {
                     if (split.length == 1) {
-                        if (!Files.exists(NoteblockPlayer.PLAYLISTS_DIR)) return true;
+                        if (!Files.exists(NoteblockPlayer.PLAYLISTS_DIR))
+                            return true;
                         List<String> playlists = Files.list(NoteblockPlayer.PLAYLISTS_DIR)
                                 .filter(Files::isDirectory)
                                 .map(Path::getFileName)
@@ -94,32 +103,51 @@ public class PlaylistCommand extends Command {
                         }
                         return true;
                     }
-                    List<String> playlistIndex = Playlist.listSongs(playlistDir);
-                    NoteblockPlayer.addChatMessage("§6------------------------------");
-                    int index = 0;
-                    for (String songName : playlistIndex) {
-                        index++;
-                        NoteblockPlayer.addChatMessage(String.format("§6%d. §3%s", index, songName));
+                    int page = 1;
+                    if (split.length == 3) {
+                        try {
+                            page = Integer.parseInt(split[2]);
+                        } catch (NumberFormatException e) {
+                            return false;
+                        }
+                    } else if (split.length > 3) {
+                        return false;
                     }
-                    NoteblockPlayer.addChatMessage("§6------------------------------");
+                    List<String> playlistIndex = Playlist.listSongs(playlistDir);
+                    if (playlistIndex.isEmpty()) {
+                        NoteblockPlayer.addChatMessage("§6Playlist is empty");
+                    } else {
+                        ArrayList<Text> entries = new ArrayList<>();
+                        int index = 1;
+                        for (String songName : playlistIndex) {
+                            entries.add(Text.literal(String.format("§6%d. §3%s", index, songName)));
+                            index++;
+                        }
+                        Paginator paginator = new Paginator(entries, "§6Playlist: " + split[1],
+                                "/" + CommandManager.COMMAND_ROOT + " playlist list " + split[1], page, 10);
+                        paginator.display();
+                    }
                     return true;
                 }
                 case "addsong": {
-                    if (split.length < 3) return false;
+                    if (split.length < 3)
+                        return false;
                     String location = String.join(" ", Arrays.copyOfRange(split, 2, split.length));
                     Playlist.addSong(playlistDir, NoteblockPlayer.SONGS_DIR.resolve(location));
                     NoteblockPlayer.addChatMessage(String.format("§6Added §3%s §6to §3%s", location, split[1]));
                     return true;
                 }
                 case "removesong": {
-                    if (split.length < 3) return false;
+                    if (split.length < 3)
+                        return false;
                     String location = String.join(" ", Arrays.copyOfRange(split, 2, split.length));
                     Playlist.removeSong(playlistDir, location);
                     NoteblockPlayer.addChatMessage(String.format("§6Removed §3%s §6from §3%s", location, split[1]));
                     return true;
                 }
                 case "renamesong": {
-                    if (split.length < 4) return false;
+                    if (split.length < 4)
+                        return false;
                     String location = String.join(" ", Arrays.copyOfRange(split, 3, split.length));
                     int index = 0;
                     try {
@@ -133,7 +161,8 @@ public class PlaylistCommand extends Command {
                     return true;
                 }
                 case "loop": {
-                    if (split.length != 1) return false;
+                    if (split.length != 1)
+                        return false;
                     NoteblockPlayer.getConfig().loopPlaylists = !NoteblockPlayer.getConfig().loopPlaylists;
                     SongHandler.getInstance().setPlaylistLoop(NoteblockPlayer.getConfig().loopPlaylists);
                     if (NoteblockPlayer.getConfig().loopPlaylists) {
@@ -141,11 +170,12 @@ public class PlaylistCommand extends Command {
                     } else {
                         NoteblockPlayer.addChatMessage("§6Disabled playlist looping");
                     }
-                    
+
                     return true;
                 }
                 case "shuffle": {
-                    if (split.length != 1) return false;
+                    if (split.length != 1)
+                        return false;
                     NoteblockPlayer.getConfig().shufflePlaylists = !NoteblockPlayer.getConfig().shufflePlaylists;
                     SongHandler.getInstance().setPlaylistShuffle(NoteblockPlayer.getConfig().shufflePlaylists);
                     if (NoteblockPlayer.getConfig().shufflePlaylists) {
@@ -153,7 +183,7 @@ public class PlaylistCommand extends Command {
                     } else {
                         NoteblockPlayer.addChatMessage("§6Disabled playlist shuffling");
                     }
-                    
+
                     return true;
                 }
                 default: {
@@ -169,7 +199,7 @@ public class PlaylistCommand extends Command {
     public CompletableFuture<Suggestions> getSuggestions(String args, SuggestionsBuilder suggestionsBuilder) {
         String[] split = args.split(" ", -1);
         if (split.length <= 1) {
-            return CommandSource.suggestMatching(new String[]{
+            return CommandSource.suggestMatching(new String[] {
                     "play",
                     "create",
                     "delete",

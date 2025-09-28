@@ -9,7 +9,7 @@ public class ToggleAutoCleanup extends Command {
     }
 
     public String[] getAliases() {
-        return new String[]{"autoCleanup"};
+        return new String[] { "autoCleanup" };
     }
 
     public String[] getSyntax() {
@@ -28,7 +28,7 @@ public class ToggleAutoCleanup extends Command {
             } else {
                 NoteblockPlayer.addChatMessage("§6Disabled automatic cleanup");
             }
-            
+
             return true;
         } else {
             return false;

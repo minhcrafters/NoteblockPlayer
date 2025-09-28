@@ -28,11 +28,11 @@ public class SongItem extends Command {
     }
 
     public String[] getAliases() {
-        return new String[]{"item"};
+        return new String[] { "item" };
     }
 
     public String[] getSyntax() {
-        return new String[]{
+        return new String[] {
                 "create <song or url>",
                 "setSongName <name>",
         };
@@ -58,7 +58,8 @@ public class SongItem extends Command {
         String[] split = args.split(" ");
         switch (split[0].toLowerCase(Locale.ROOT)) {
             case "create":
-                if (split.length < 2) return false;
+                if (split.length < 2)
+                    return false;
                 String location = String.join(" ", Arrays.copyOfRange(split, 1, split.length));
                 try {
                     (new SongItemCreatorThread(location)).start();
@@ -67,16 +68,19 @@ public class SongItem extends Command {
                 }
                 return true;
             case "setsongname":
-                if (split.length < 2) return false;
+                if (split.length < 2)
+                    return false;
                 if (songPlayerNBT == null) {
                     NoteblockPlayer.addChatMessage("§cYou must be holding a song item");
                     return true;
                 }
                 String name = String.join(" ", Arrays.copyOfRange(split, 1, split.length));
-                NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt.getCompound(SongItemUtils.SONG_ITEM_KEY).putString(SongItemUtils.DISPLAY_NAME_KEY, name));
+                NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> nbt
+                        .getCompound(SongItemUtils.SONG_ITEM_KEY).putString(SongItemUtils.DISPLAY_NAME_KEY, name));
                 SongItemUtils.addSongItemDisplay(stack);
                 mc.player.setStackInHand(Hand.MAIN_HAND, stack);
-                mc.interactionManager.clickCreativeStack(mc.player.getStackInHand(Hand.MAIN_HAND), 36 + mc.player.getInventory().selectedSlot);
+                mc.interactionManager.clickCreativeStack(mc.player.getStackInHand(Hand.MAIN_HAND),
+                        36 + mc.player.getInventory().selectedSlot);
                 NoteblockPlayer.addChatMessage("§6Set song's display name to §3" + name);
                 return true;
             default:
@@ -87,7 +91,7 @@ public class SongItem extends Command {
     public CompletableFuture<Suggestions> getSuggestions(String args, SuggestionsBuilder suggestionsBuilder) {
         String[] split = args.split(" ", -1);
         if (split.length <= 1) {
-            return CommandSource.suggestMatching(new String[]{
+            return CommandSource.suggestMatching(new String[] {
                     "create",
                     "setSongName",
             }, suggestionsBuilder);

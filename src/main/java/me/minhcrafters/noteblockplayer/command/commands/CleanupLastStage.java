@@ -16,7 +16,7 @@ public class CleanupLastStage extends Command {
     }
 
     public String[] getAliases() {
-        return new String[]{};
+        return new String[] {};
     }
 
     public String[] getSyntax() {
@@ -34,16 +34,19 @@ public class CleanupLastStage extends Command {
                 NoteblockPlayer.addChatMessage("§cYou cannot start cleanup if you are in the middle of another action");
                 return true;
             }
-            if (lastStage == null || SongHandler.getInstance().originalBlocks.size() == 0 || !lastStage.serverIdentifier.equals(Utils.getServerIdentifier())) {
+            if (lastStage == null || SongHandler.getInstance().originalBlocks.size() == 0
+                    || !lastStage.serverIdentifier.equals(Utils.getServerIdentifier())) {
                 NoteblockPlayer.addChatMessage("§6There is nothing to clean up");
                 return true;
             }
-            if (mc.player.getPos().squaredDistanceTo(lastStage.getOriginBottomCenter()) > 3 * 3 || !lastStage.worldName.equals(Utils.getWorldName())) {
+            if (mc.player.getPos().squaredDistanceTo(lastStage.getOriginBottomCenter()) > 3 * 3
+                    || !lastStage.worldName.equals(Utils.getWorldName())) {
                 String coordStr = String.format(
                         "%d %d %d",
-                        lastStage.playerPosition.getX(), lastStage.playerPosition.getY(), lastStage.playerPosition.getZ()
-                );
-                NoteblockPlayer.addChatMessage("§6You must be within §33 §6blocks of the center of your stage to start cleanup.");
+                        lastStage.playerPosition.getX(), lastStage.playerPosition.getY(),
+                        lastStage.playerPosition.getZ());
+                NoteblockPlayer.addChatMessage(
+                        "§6You must be within §33 §6blocks of the center of your stage to start cleanup.");
                 MutableText coordText = Utils.joinTexts(null,
                         Text.literal("This is at ").setStyle(Style.EMPTY.withColor(Formatting.GOLD)),
                         Text.literal(coordStr).setStyle(
@@ -51,11 +54,10 @@ public class CleanupLastStage extends Command {
                                         .withColor(Formatting.DARK_AQUA)
                                         .withUnderline(true)
                                         .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, coordStr))
-                                        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("Copy \"" + coordStr + "\"")))
-                        ),
+                                        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                                                Text.literal("Copy \"" + coordStr + "\"")))),
                         Text.literal(" in world ").setStyle(Style.EMPTY.withColor(Formatting.GOLD)),
-                        Text.literal(lastStage.worldName).setStyle(Style.EMPTY.withColor(Formatting.DARK_AQUA))
-                );
+                        Text.literal(lastStage.worldName).setStyle(Style.EMPTY.withColor(Formatting.DARK_AQUA)));
                 NoteblockPlayer.addChatMessage(coordText);
                 return true;
             }

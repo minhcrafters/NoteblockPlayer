@@ -36,7 +36,8 @@ public class ClientCommonNetworkHandlerMixin {
             if (lastStage != null) {
                 if (!NoteblockPlayer.getConfig().rotate) {
                     connection.send(new PlayerMoveC2SPacket.Full(
-                            lastStage.playerPosition.getX() + 0.5, lastStage.playerPosition.getY(), lastStage.playerPosition.getZ() + 0.5,
+                            lastStage.playerPosition.getX() + 0.5, lastStage.playerPosition.getY(),
+                            lastStage.playerPosition.getZ() + 0.5,
                             NoteblockPlayer.mc.player.getYaw(), NoteblockPlayer.mc.player.getPitch(),
                             true, false));
                     if (NoteblockPlayer.fakePlayer != null) {
@@ -45,15 +46,13 @@ public class ClientCommonNetworkHandlerMixin {
                 }
             }
             ci.cancel();
-        }
-        else if (packet instanceof ClientCommandC2SPacket) {
+        } else if (packet instanceof ClientCommandC2SPacket) {
             ClientCommandC2SPacket.Mode mode = ((ClientCommandC2SPacket) packet).getMode();
             if (NoteblockPlayer.fakePlayer != null) {
                 if (mode == ClientCommandC2SPacket.Mode.PRESS_SHIFT_KEY) {
                     NoteblockPlayer.fakePlayer.setSneaking(true);
                     NoteblockPlayer.fakePlayer.setPose(EntityPose.CROUCHING);
-                }
-                else if (mode == ClientCommandC2SPacket.Mode.RELEASE_SHIFT_KEY) {
+                } else if (mode == ClientCommandC2SPacket.Mode.RELEASE_SHIFT_KEY) {
                     NoteblockPlayer.fakePlayer.setSneaking(false);
                     NoteblockPlayer.fakePlayer.setPose(EntityPose.STANDING);
                 }

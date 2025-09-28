@@ -11,7 +11,7 @@ public class Queue extends Command {
     }
 
     public String[] getAliases() {
-        return new String[]{"showQueue"};
+        return new String[] { "showQueue" };
     }
 
     public String[] getSyntax() {

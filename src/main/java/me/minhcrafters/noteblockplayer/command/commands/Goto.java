@@ -13,7 +13,7 @@ public class Goto extends Command {
     }
 
     public String[] getSyntax() {
-        return new String[]{"<mm:ss>"};
+        return new String[] { "<mm:ss>" };
     }
 
     public String getDescription() {

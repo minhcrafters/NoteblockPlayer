@@ -9,7 +9,7 @@ public class ToggleFlightNoClip extends Command {
     }
 
     public String[] getAliases() {
-        return new String[]{"flightNoclip"};
+        return new String[] { "flightNoclip" };
     }
 
     public String[] getSyntax() {
@@ -28,7 +28,7 @@ public class ToggleFlightNoClip extends Command {
             } else {
                 NoteblockPlayer.addChatMessage("§6Disabled flight noclip");
             }
-            
+
             return true;
         } else {
             return false;

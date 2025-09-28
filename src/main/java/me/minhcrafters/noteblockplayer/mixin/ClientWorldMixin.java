@@ -24,7 +24,8 @@ public class ClientWorldMixin {
                     BlockState oldState = NoteblockPlayer.mc.world.getBlockState(pos);
                     if (oldState.equals(state))
                         return;
-                    NoteblockPlayer.addChatMessage(String.format("§7Block in stage changed from §2%s §7to §2%s", oldState.toString(), state.toString()));
+                    NoteblockPlayer.addChatMessage(String.format("§7Block in stage changed from §2%s §7to §2%s",
+                            oldState.toString(), state.toString()));
                     break;
                 }
             }
