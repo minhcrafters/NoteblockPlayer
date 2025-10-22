@@ -50,7 +50,8 @@ public class NoteblockPlayer implements ModInitializer {
     }
 
     public static ConfigImpl getConfig() {
-        if (config != null) return config;
+        if (config != null)
+            return config;
         return null;
     }
 

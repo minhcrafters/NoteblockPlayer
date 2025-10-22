@@ -1,19 +1,19 @@
 {
-  "required": true,
-  "minVersion": "0.8",
-  "package": "me.minhcrafters.noteblockplayer.mixin",
-  "compatibilityLevel": "JAVA_21",
-  "client": [
-    "ClientCommonNetworkHandlerMixin",
-    "ClientPlayerEntityMixin",
-    "ClientPlayNetworkHandlerMixin",
-    "InGameHudMixin",
-    "MinecraftClientMixin",
-    "PlayerEntityMixin",
-    "accessor.ClientPlayerInteractionManagerAccessor",
-    "accessor.ClientPlayNetworkHandlerAccessor"
-  ],
-  "injectors": {
-    "defaultRequire": 1
-  }
+    "required": true,
+    "minVersion": "0.8",
+    "package": "me.minhcrafters.noteblockplayer.mixin",
+    "compatibilityLevel": "JAVA_21",
+    "client": [
+        "ClientCommonNetworkHandlerMixin",
+        "ClientPlayerEntityMixin",
+        "ClientPlayNetworkHandlerMixin",
+        "InGameHudMixin",
+        "MinecraftClientMixin",
+        "PlayerEntityMixin",
+        "accessor.ClientPlayerInteractionManagerAccessor",
+        "accessor.ClientPlayNetworkHandlerAccessor"
+    ],
+    "injectors": {
+        "defaultRequire": 1
+    }
 }

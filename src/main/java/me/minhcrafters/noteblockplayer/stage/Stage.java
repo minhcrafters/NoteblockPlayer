@@ -32,12 +32,10 @@ public class Stage {
 
     private float playerYaw = 0;
 
-    // Not used in survival-only mode
     public LinkedList<BlockPos> requiredBreaks = new LinkedList<>();
     public TreeSet<Integer> missingNotes = new TreeSet<>();
     public int totalMissingNotes = 0;
 
-    // Only used in survival-only mode
     public LinkedList<BlockPos> requiredClicks = new LinkedList<>();
 
     public Stage() {
@@ -45,7 +43,6 @@ public class Stage {
 
         playerYaw = mc.player.getYaw();
 
-        // Information tracked for checking cleanup conditions
         worldName = Utils.getWorldName();
         serverIdentifier = Utils.getServerIdentifier();
         System.out.println("Server identifier: " + serverIdentifier);
@@ -79,7 +76,6 @@ public class Stage {
         noteblockPositions.clear();
         missingNotes.clear();
 
-        // Add all required notes to missingNotes
         for (int i = 0; i < 400; i++) {
             int j = i;
             song.getLayers().forEach((layer) -> {
@@ -98,22 +94,19 @@ public class Stage {
             case STEREO -> loadStereoBlocks(noteblockLocations, breakLocations);
         }
 
-        // Sorting noteblock and break locations
         if (NoteblockPlayer.getConfig().stageType != StageType.STEREO) {
             noteblockLocations.sort((a, b) -> {
-                // First sort by y
                 int a_dy = a.getY() - playerPosition.getY();
                 int b_dy = b.getY() - playerPosition.getY();
                 if (a_dy == -1)
-                    a_dy = 0; // same layer
+                    a_dy = 0;
                 if (b_dy == -1)
-                    b_dy = 0; // same layer
+                    b_dy = 0;
                 if (Math.abs(a_dy) < Math.abs(b_dy)) {
                     return -1;
                 } else if (Math.abs(a_dy) > Math.abs(b_dy)) {
                     return 1;
                 }
-                // Then sort by horizontal distance
                 int a_dx = a.getX() - playerPosition.getX();
                 int a_dz = a.getZ() - playerPosition.getZ();
                 int b_dx = b.getX() - playerPosition.getX();
@@ -125,15 +118,12 @@ public class Stage {
                 } else if (a_dist > b_dist) {
                     return 1;
                 }
-                // Finally sort by angle
                 double a_angle = Math.atan2(a_dz, a_dx);
                 double b_angle = Math.atan2(b_dz, b_dx);
                 return Double.compare(a_angle, b_angle);
             });
         }
 
-        // Remove already-existing notes from missingNotes, adding their positions to
-        // noteblockPositions, and create a list of unused noteblock locations
         ArrayList<BlockPos> unusedNoteblockLocations = new ArrayList<>();
         for (BlockPos nbPos : noteblockLocations) {
             BlockState bs = NoteblockPlayer.mc.world.getBlockState(nbPos);
@@ -151,21 +141,19 @@ public class Stage {
             }
         }
 
-        // Cull noteblocks that won't fit in stage
         if (missingNotes.size() > unusedNoteblockLocations.size()) {
             while (missingNotes.size() > unusedNoteblockLocations.size()) {
                 missingNotes.pollLast();
             }
         }
 
-        // Populate missing noteblocks into the unused noteblock locations
         int idx = 0;
         for (int noteId : missingNotes) {
             BlockPos bp = unusedNoteblockLocations.get(idx++);
             noteblockPositions.put(noteId, bp);
         }
 
-        for (BlockPos bp : noteblockPositions.values()) { // Optional break locations
+        for (BlockPos bp : noteblockPositions.values()) {
             breakLocations.add(bp.up());
         }
 
@@ -173,13 +161,11 @@ public class Stage {
             BlockState bs = NoteblockPlayer.mc.world.getBlockState(bp);
             return !bs.isAir() && bs.getFluidState().isEmpty();
         }).sorted((a, b) -> {
-            // First sort by y
             if (a.getY() < b.getY()) {
                 return -1;
             } else if (a.getY() > b.getY()) {
                 return 1;
             }
-            // Then sort by horizontal distance
             int a_dx = a.getX() - playerPosition.getX();
             int a_dz = a.getZ() - playerPosition.getZ();
             int b_dx = b.getX() - playerPosition.getX();
@@ -191,7 +177,6 @@ public class Stage {
             } else if (a_dist > b_dist) {
                 return 1;
             }
-            // Finally sort by angle
             double a_angle = Math.atan2(a_dz, a_dx);
             double b_angle = Math.atan2(b_dz, b_dx);
             return Double.compare(a_angle, b_angle);
@@ -202,7 +187,6 @@ public class Stage {
             requiredBreaks.clear();
         }
 
-        // Set total missing notes
         totalMissingNotes = missingNotes.size();
     }
 
@@ -354,46 +338,35 @@ public class Stage {
         }
     }
 
-
     void loadStereoBlocks(Collection<BlockPos> noteblockLocations, Collection<BlockPos> breakLocations) {
         @SuppressWarnings("static-access")
         int maxRadius = NoteblockPlayer.getConfig().maxRadius;
         double maxAngleRad = Math.toRadians(180);
         double layerHeight = 1.0;
 
-        // Determine which quadrant the player is facing
-        float normalizedYaw = (playerYaw % 360 + 360) % 360; // Normalize to 0-360 range
+        float normalizedYaw = (playerYaw % 360 + 360) % 360;
 
-        // Determine quadrant: 0=south, 90=west, 180=north, 270=east
         int facingQuadrant;
 
         if (normalizedYaw >= 315 || normalizedYaw < 45) {
-            facingQuadrant = 0; // Looking south
+            facingQuadrant = 0;
         } else if (normalizedYaw >= 45 && normalizedYaw < 135) {
-            facingQuadrant = 90; // Looking west
+            facingQuadrant = 90;
         } else if (normalizedYaw >= 135 && normalizedYaw < 225) {
-            facingQuadrant = 180; // Looking north
-        } else { // Between 225 and 315
-            facingQuadrant = 270; // Looking east
+            facingQuadrant = 180;
+        } else {
+            facingQuadrant = 270;
         }
 
-        // Convert quadrant to mathematical radians
-        // South (0) → π/2, West (90) → π, North (180) → 3π/2, East (270) → 0
         double playerRotationRad = Math.toRadians(facingQuadrant);
 
-        // System.out.println("Player yaw: " + normalizedYaw + ", Facing quadrant: " +
-        // facingQuadrant + ", Rotation: " + Math.toDegrees(playerRotationRad));
-
-        // Get the song layers
         ArrayList<Layer> songLayers = currentSong.getLayers();
         int actualLayerCount = songLayers.size();
         if (actualLayerCount == 0)
             return;
 
-        // Map to track which actual song layer each note belongs to
         Map<Integer, Integer> noteToLayerIndex = new HashMap<>();
 
-        // Assign each note to its layer index
         for (int i = 0; i < songLayers.size(); i++) {
             Layer layer = songLayers.get(i);
             for (int noteId = 0; noteId < 400; noteId++) {
@@ -403,10 +376,8 @@ public class Stage {
             }
         }
 
-        // Track used horizontal positions to prevent any stacking
         Set<String> usedXZ = new HashSet<>();
 
-        // Collect earliest note for each noteId
         Map<Integer, Note> earliestNote = new HashMap<>();
         for (Note note : currentSong.getTotalNotes()) {
             if (!earliestNote.containsKey(note.noteId) || note.time < earliestNote.get(note.noteId).time) {
@@ -414,7 +385,6 @@ public class Stage {
             }
         }
 
-        // Collect required noteIds
         List<Integer> requiredNoteIds = new ArrayList<>();
         for (int noteId = 0; noteId < 400; noteId++) {
             for (Layer layer : songLayers) {
@@ -425,47 +395,36 @@ public class Stage {
             }
         }
 
-        // Sort noteIds by priority: higher velocity first, then earlier onset, then
-        // lower channel index, then lower pitch
         requiredNoteIds.sort(Comparator.comparingInt((Integer n) -> -earliestNote.get(n).velocity)
                 .thenComparingLong(n -> earliestNote.get(n).time)
                 .thenComparingInt(n -> noteToLayerIndex.get(n))
                 .thenComparingInt(n -> n % 25));
 
-        // Process notes in priority order
         for (int noteId : requiredNoteIds) {
             Note currentNote = earliestNote.get(noteId);
             int velocity = currentNote.velocity;
             int pan = currentSong.getLayers().get(noteToLayerIndex.get(noteId)).panning;
 
-            // Map higher velocities to wider placements (larger radius), but ensure within
-            // hearing range
-            double hearingRange = 48.0; // Noteblocks can be heard up to 48 blocks away
+            double hearingRange = 48.0;
             double effectiveMaxRadius = Math.min(maxRadius, hearingRange);
-            double baseRadius = 1 + (velocity / 100.0) * (effectiveMaxRadius - 1);
-            // Pan -100 = full left, 0 = center, 100 = full right
+            double baseRadius = 1 + ((100 - velocity) / 100.0) * (effectiveMaxRadius - 1);
             double baseAngle = ((pan + 100.0) / 200.0) * maxAngleRad + playerRotationRad;
 
-            // Determine vertical position based on the actual layer in the song
             int layerIndex = noteToLayerIndex.get(noteId);
-            // Distribute layers vertically, centering them around the player
             int dy = (int) Math.floor(layerIndex * layerHeight)
                     - (int) Math.floor((actualLayerCount - 1) * layerHeight / 2.0);
 
             BlockPos chosen = null;
             boolean overlapping = false;
 
-            // First search attempt in the normal direction
             double deltaAngle = Math.toRadians(5);
 
             outer: for (int rStep = 1; rStep <= 16; rStep++) {
                 double radius = baseRadius + rStep;
-                // Increased angle range for more positions
                 for (int aStep = -6; aStep <= 6; aStep++) {
                     double angle = baseAngle + aStep * deltaAngle;
                     int dx = MathHelper.floor(radius * Math.cos(angle));
                     int dz = MathHelper.floor(radius * Math.sin(angle));
-                    // Unique key for x/z footprint
                     String key = (playerPosition.getX() + dx) + "," + (playerPosition.getZ() + dz);
                     double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
                     if (!usedXZ.contains(key) && distance <= hearingRange) {
@@ -474,28 +433,20 @@ public class Stage {
                         break outer;
                     }
                 }
-                // If we've gone through a few radius steps and still haven't found a spot,
-                // mark as overlapping so we can try the opposite direction
                 if (rStep >= 8) {
                     overlapping = true;
                 }
             }
 
-            // If we're having trouble finding a position, try the opposite direction (180
-            // degrees away)
             if (chosen == null && overlapping) {
-                // Flip the angle 180 degrees
                 double oppositeAngle = baseAngle + Math.PI;
 
-                // Try positions in the opposite direction with more variations
-                outer: for (int rStep = 0; rStep <= 8; rStep++) { // Increased max step to 8 for more range
+                outer: for (int rStep = 0; rStep <= 8; rStep++) {
                     double radius = baseRadius + rStep;
-                    // Increased angle range for more positions
                     for (int aStep = -6; aStep <= 6; aStep++) {
                         double angle = oppositeAngle + aStep * deltaAngle;
                         int dx = MathHelper.floor(radius * Math.cos(angle));
                         int dz = MathHelper.floor(radius * Math.sin(angle));
-                        // Unique key for x/z footprint
                         String key = (playerPosition.getX() + dx) + "," + (playerPosition.getZ() + dz);
                         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
                         if (!usedXZ.contains(key) && distance <= hearingRange) {
@@ -506,41 +457,12 @@ public class Stage {
                     }
                 }
 
-                // // If still no position found, try intermediate angles
-                // if (chosen == null) {
-                // // Try positions at 90 degree angles from the original
-                // double[] perpendicularAngles = {baseAngle + Math.PI / 2, baseAngle - Math.PI
-                // / 2};
-                // outer:
-                // for (double perpAngle : perpendicularAngles) {
-                // for (int rStep = 0; rStep <= 8; rStep++) {
-                // double radius = baseRadius + rStep;
-                // for (int aStep = -4; aStep <= 4; aStep++) {
-                // double angle = perpAngle + aStep * deltaAngle;
-                // int dx = MathHelper.floor(radius * Math.cos(angle));
-                // int dz = MathHelper.floor(radius * Math.sin(angle));
-                // String key = (playerPosition.getX() + dx) + "," + (playerPosition.getZ() +
-                // dz);
-                // if (!usedXZ.contains(key)) {
-                // chosen = playerPosition.add(dx, dy, dz);
-                // usedXZ.add(key);
-                // break outer;
-                // }
-                // }
-                // }
-                // }
-                // }
             }
 
-            // Fallback if still none found - try a more extensive search
             if (chosen == null) {
 
-                // Last resort: try a wider search in all directions with smaller angle
-                // increments
                 for (int r = 1; r <= effectiveMaxRadius * 2 && chosen == null; r++) {
-                    // Use a smaller angle increment for more thorough coverage
                     for (int angle = 0; angle < 360; angle += 5) {
-                        // Convert to radians and make relative to player rotation
                         double rad = Math.toRadians(angle) + playerRotationRad;
                         int dx = MathHelper.floor(r * Math.cos(rad));
                         int dz = MathHelper.floor(r * Math.sin(rad));
@@ -555,17 +477,13 @@ public class Stage {
                 }
             }
 
-            // If we still couldn't find a position, try different Y levels
             if (chosen == null) {
 
-                // Try alternative vertical positions if horizontal space is congested
                 for (int yOffset = 1; yOffset <= 5 && chosen == null; yOffset++) {
-                    // Alternate between above and below the original y level
                     int altDy = dy + (yOffset % 2 == 0 ? yOffset / 2 : -yOffset / 2);
 
                     for (int r = 1; r <= effectiveMaxRadius && chosen == null; r++) {
                         for (int angle = 0; angle < 360; angle += 10) {
-                            // Ensure consistent angle calculation with the player's rotation
                             double rad = Math.toRadians(angle) + playerRotationRad;
                             int dx = MathHelper.floor(r * Math.cos(rad));
                             int dz = MathHelper.floor(r * Math.sin(rad));
@@ -581,14 +499,11 @@ public class Stage {
                 }
             }
 
-            // Absolute last resort - force placement at a unique position
             if (chosen == null) {
 
-                // Find any available position by scanning outward in a spiral
                 for (int spiral = 1; spiral <= effectiveMaxRadius * 3 && chosen == null; spiral++) {
                     for (int dx = -spiral; dx <= spiral && chosen == null; dx++) {
                         for (int dz = -spiral; dz <= spiral && chosen == null; dz++) {
-                            // Only check the perimeter of the current spiral square
                             if (Math.abs(dx) != spiral && Math.abs(dz) != spiral)
                                 continue;
 
@@ -604,12 +519,9 @@ public class Stage {
             }
 
             noteblockLocations.add(chosen);
-            // No break required for velocity-spatial mode
         }
     }
 
-    // This code was taken from Sk8kman fork of NoteblockPlayer
-    // Thanks Sk8kman and Lizard16 for this spherical stage design!
     void loadSphericalBlocks(Collection<BlockPos> noteblockLocations, Collection<BlockPos> breakLocations) {
         final int maxRange = 5;
         int[] yLayers = { -4, -2, -1, 0, 1, 2, 3, 4, 5, 6 };
@@ -633,15 +545,14 @@ public class Stage {
                             }
                             break;
                         }
-                        case -2: { // also takes care of -3
-                            if (adz == 0 && adx == 0) { // prevents placing in the center
+                        case -2: {
+                            if (adz == 0 && adx == 0) {
                                 break;
                             }
-                            if (adz * adx > 9) { // prevents building out too far
+                            if (adz * adx > 9) {
                                 break;
                             }
                             if (adz + adx == 5 && adx != 0 && adz != 0) {
-                                // add noteblocks above and below here
                                 noteblockLocations.add(new BlockPos(playerPosition.getX() + dx,
                                         playerPosition.getY() + dy + 1, playerPosition.getZ() + dz));
                                 noteblockLocations.add(new BlockPos(playerPosition.getX() + dx,
@@ -649,7 +560,6 @@ public class Stage {
                                 break;
                             }
                             if (adz * adx == 3) {
-                                // add noteblocks above and below here
                                 noteblockLocations.add(new BlockPos(playerPosition.getX() + dx,
                                         playerPosition.getY() + dy + 1, playerPosition.getZ() + dz));
                                 noteblockLocations.add(new BlockPos(playerPosition.getX() + dx,
@@ -670,7 +580,7 @@ public class Stage {
                                         playerPosition.getY() + dy + 2, playerPosition.getZ() + dz));
                                 break;
                             }
-                            if (adz * adx == 2 * maxRange) { // expecting one to be 2, and one to be maxRange (e.g. 5)
+                            if (adz * adx == 2 * maxRange) {
                                 noteblockLocations.add(new BlockPos(playerPosition.getX() + dx,
                                         playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 breakLocations.add(new BlockPos(playerPosition.getX() + dx,
@@ -762,7 +672,7 @@ public class Stage {
                                         playerPosition.getY() + dy, playerPosition.getZ() + dz));
                                 break;
                             }
-                            if (adx > 3 || adz > 3) { // don't allow any more checks past 3 blocks out
+                            if (adx > 3 || adz > 3) {
                                 break;
                             }
                             if (adx + adz > 1 && adx + adz < 5) {
@@ -810,14 +720,11 @@ public class Stage {
                             break;
                         }
                     }
-                    // all breaks lead here
                 }
             }
         }
     }
 
-    // Find available noteblocks in range for the player to use in survival only
-    // mode
     Map<BlockPos, Integer>[] loadSurvivalBlocks() {
         @SuppressWarnings("unchecked")
         Map<BlockPos, Integer>[] instrumentMap = new Map[16];
@@ -844,13 +751,9 @@ public class Stage {
         return instrumentMap;
     }
 
-    // This doesn't check for whether the block above the noteblock position is also
-    // reachable
-    // Usually there is sky above you though so hopefully this doesn't cause a
-    // problem most of the time
     boolean withinBreakingDist(int dx, int dy, int dz) {
-        double dy1 = dy + 0.5 - 1.62; // Standing eye height
-        double dy2 = dy + 0.5 - 1.27; // Crouching eye height
+        double dy1 = dy + 0.5 - 1.62;
+        double dy2 = dy + 0.5 - 1.27;
         return dx * dx + dy1 * dy1 + dz * dz < 5.99999 * 5.99999 && dx * dx + dy2 * dy2 + dz * dz < 5.99999 * 5.99999;
     }
 

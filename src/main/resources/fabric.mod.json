@@ -1,35 +1,27 @@
 {
-  "schemaVersion": 1,
-  "id": "noteblockplayer",
-  "version": "${version}",
-  "name": "NoteblockPlayer",
-  "description": "A mod for building and playing noteblock songs in Minecraft",
-  "authors": [
-    "minhcrafters"
-  ],
-  "license": "MIT",
-  "icon": "assets/noteblockplayer/icon.png",
-  "environment": "*",
-  "accessWidener": "noteblockplayer.accesswidener",
-  "entrypoints": {
-    "main": [
-      "me.minhcrafters.noteblockplayer.NoteblockPlayer"
-    ],
-    "modmenu": [
-      "me.minhcrafters.noteblockplayer.config.ModMenuImpl"
-    ]
-  },
-  "mixins": [
-    "noteblockplayer.mixins.json"
-  ],
-  "depends": {
-    "fabricloader": ">=0.16.0",
-    "fabric": "*",
-    "minecraft": "~1.21.4",
-    "java": ">=21"
-  },
-  "suggests": {
-    "flamingo": "*",
-    "modmenu": "*"
-  }
+    "schemaVersion": 1,
+    "id": "noteblockplayer",
+    "version": "${version}",
+    "name": "NoteblockPlayer",
+    "description": "A mod for building and playing noteblock songs in Minecraft",
+    "authors": ["minhcrafters"],
+    "license": "MIT",
+    "icon": "assets/noteblockplayer/icon.png",
+    "environment": "*",
+    "accessWidener": "noteblockplayer.accesswidener",
+    "entrypoints": {
+        "main": ["me.minhcrafters.noteblockplayer.NoteblockPlayer"],
+        "modmenu": ["me.minhcrafters.noteblockplayer.config.ModMenuImpl"]
+    },
+    "mixins": ["noteblockplayer.mixins.json"],
+    "depends": {
+        "fabricloader": ">=0.16.0",
+        "fabric": "*",
+        "minecraft": "~1.21.4",
+        "java": ">=21"
+    },
+    "suggests": {
+        "flamingo": "*",
+        "modmenu": "*"
+    }
 }
