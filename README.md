@@ -1,6 +1,6 @@
 # NoteblockPlayer
 
-A hard fork of [SongPlayer](https://github.com/hhhzzzsss/SongPlayer) with more features and improved functionality.
+A hard fork of [SongPlayer](https://github.com/hhhzzzsss/SongPlayer), a Minecraft mod that allows you to play noteblock songs, with more features and improved functionality.
 
 ## Acknowledgements
 
